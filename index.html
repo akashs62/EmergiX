@@ -46,7 +46,7 @@
                     </svg>
                     1800-EMERGIX
                 </a>
-                <a href="signin.html" class="btn-signin" id="btnSignin" style="text-decoration:none;">Sign In</a>
+                <a href="signup.html" class="btn-signin" style="text-decoration:none;">Create Account / Sign In</a>
                 <button class="hamburger" id="hamburger" aria-label="Toggle menu" aria-expanded="false">
                     <span></span><span></span><span></span>
                 </button>
@@ -89,26 +89,7 @@
                         </svg>
                     </a>
                 </div>
-                <div class="hero-trust-row">
-                    <div class="hero-trust-item">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-                            <path d="M9 12l2 2 4-4m5 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#27AE60" stroke-width="2"
-                                stroke-linecap="round" />
-                        </svg> ISO 9001 Certified
-                    </div>
-                    <div class="hero-trust-item">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-                            <path d="M9 12l2 2 4-4m5 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#27AE60" stroke-width="2"
-                                stroke-linecap="round" />
-                        </svg> HIPAA Compliant
-                    </div>
-                    <div class="hero-trust-item">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-                            <path d="M9 12l2 2 4-4m5 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#27AE60" stroke-width="2"
-                                stroke-linecap="round" />
-                        </svg> Govt. Empanelled
-                    </div>
-                </div>
+
             </div>
 
             <!-- Hero visual: floating info cards -->
@@ -699,10 +680,6 @@
             <div class="footer-grid">
 
                 <div class="footer-brand-col">
-                    <a href="#home" class="nav-logo footer-logo-link" aria-label="EmergiX Home" style="gap:0;">
-                        <img src="logo.png" alt="EmergiX Logo" height="48"
-                            style="display:block;height:48px;width:auto;" />
-                    </a>
                     <p class="footer-desc">India's trusted emergency coordination platform. Rapid response, smart
                         routing, compassionate care — 24/7.</p>
                     <div class="footer-socials">
@@ -821,16 +798,41 @@
             </div>
             <h2 id="modalSiTitle" class="modal-title">Welcome Back</h2>
             <p class="modal-sub">Sign in to your EmergiX account</p>
-            <form class="signin-form" onsubmit="handleSignin(event)">
+            <form id="index-signin-form" class="signin-form" onsubmit="
+                event.preventDefault();
+                const btn = this.querySelector('button[type=submit]');
+                btn.innerText = 'Signing in...';
+                btn.disabled = true;
+                
+                fetch('http://localhost:3000/api/auth/signin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: document.getElementById('siPhone').value, password: document.getElementById('siPass').value })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if(data.token) {
+                        closeModal('modalSignin');
+                        showToast('✅ Signed in successfully! Welcome back.', 'success');
+                    } else {
+                        showToast('❌ ' + (data.error || 'Failed to sign in'), 'error');
+                    }
+                })
+                .catch(() => showToast('❌ Network error', 'error'))
+                .finally(() => {
+                    btn.innerText = 'Sign In';
+                    btn.disabled = false;
+                });
+            ">
                 <div class="form-group">
                     <label for="siPhone" class="form-label">Phone / Email</label>
                     <input type="text" id="siPhone" class="form-input" placeholder="+91 9876 543210"
-                        autocomplete="username" />
+                        autocomplete="username" required />
                 </div>
                 <div class="form-group">
                     <label for="siPass" class="form-label">Password</label>
                     <input type="password" id="siPass" class="form-input" placeholder="••••••••"
-                        autocomplete="current-password" />
+                        autocomplete="current-password" required />
                 </div>
                 <button type="submit" class="btn-brand-full">Sign In</button>
             </form>

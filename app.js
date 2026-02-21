@@ -146,6 +146,11 @@ if (btnConfirm) {
         const type = sel ? sel.textContent.trim() : 'Emergency';
         closeModal('modalEmergency');
         showToast(`🚨 ${type} alert dispatched! An ambulance is en route.`, 'success');
+
+        // Start live tracking animation
+        setTimeout(() => {
+            startLiveTracking();
+        }, 800);
     });
 }
 
@@ -160,7 +165,8 @@ window.handleSignin = function (e) {
 const btnLiveMap = document.getElementById('btnLiveMap');
 if (btnLiveMap) {
     btnLiveMap.addEventListener('click', () => {
-        showToast('🗺️ Live map feature coming soon! Stay tuned.', 'info');
+        showToast('🗺️ Entering live tracking mode.', 'info');
+        startLiveTracking();
     });
 }
 
@@ -289,16 +295,31 @@ window.toggleFaq = function (id) {
 /* ============================================================
    MAP CANVAS — City grid tracking visualization
    ============================================================ */
+let mapAnimationId;
+let ambProgress = 0;
+let isDispatchActive = false;
+
 function initMap() {
+    drawMapFrame();
+    if (isDispatchActive && !mapAnimationId) {
+        animateMap();
+    }
+}
+
+function drawMapFrame() {
     const canvas = document.getElementById('mapCanvas');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    const W = canvas.width = canvas.offsetWidth * window.devicePixelRatio;
-    const H = 300 * window.devicePixelRatio;
-    canvas.height = H;
-    canvas.style.height = '300px';
 
+    // Setup high-res canvas scaling if not done
     const scale = window.devicePixelRatio;
+    if (canvas.width !== canvas.offsetWidth * scale) {
+        canvas.width = canvas.offsetWidth * scale;
+        canvas.height = 300 * scale;
+        canvas.style.height = '300px';
+    }
+
+    ctx.save();
     ctx.scale(scale, scale);
     const w = canvas.offsetWidth, h = 300;
 
@@ -322,30 +343,85 @@ function initMap() {
         ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
     });
 
+    // Define Waypoints
+    const waypoints = [
+        { x: w * 0.15, y: h * 0.72 }, // Patient
+        { x: w * 0.22, y: h * 0.72 },
+        { x: w * 0.22, y: h * 0.35 },
+        { x: w * 0.6, y: h * 0.35 },
+        { x: w * 0.6, y: h * 0.2 } // Hospital
+    ];
+
     // Route (dashed teal)
     ctx.strokeStyle = '#2EC4B6';
     ctx.lineWidth = 2.5;
     ctx.setLineDash([7, 5]);
     ctx.beginPath();
-    ctx.moveTo(w * 0.15, h * 0.72);
-    ctx.lineTo(w * 0.22, h * 0.72);
-    ctx.lineTo(w * 0.22, h * 0.35);
-    ctx.lineTo(w * 0.6, h * 0.35);
-    ctx.lineTo(w * 0.6, h * 0.2);
+    ctx.moveTo(waypoints[0].x, waypoints[0].y);
+    for (let i = 1; i < waypoints.length; i++) {
+        ctx.lineTo(waypoints[i].x, waypoints[i].y);
+    }
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // Hospital marker
-    drawPin(ctx, w * 0.6, h * 0.2, '#2B7FFF', 'H');
-    // Patient marker
-    drawPin(ctx, w * 0.15, h * 0.72, '#FF4D4F', '!');
-    // Ambulance
-    drawAmb(ctx, w * 0.22, h * 0.35);
+    // Calculate total path length for ambulance interpolation
+    let totalDist = 0;
+    const dists = [];
+    for (let i = 0; i < waypoints.length - 1; i++) {
+        let d = Math.hypot(waypoints[i + 1].x - waypoints[i].x, waypoints[i + 1].y - waypoints[i].y);
+        dists.push(d);
+        totalDist += d;
+    }
 
-    // Range circle
-    ctx.strokeStyle = 'rgba(46,196,182,0.25)';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.arc(w * 0.22, h * 0.35, 36, 0, Math.PI * 2); ctx.stroke();
+    // Determine current ambulance position based on ambProgress
+    let currentDist = ambProgress * totalDist;
+    let ambX = waypoints[0].x;
+    let ambY = waypoints[0].y;
+
+    if (isDispatchActive) {
+        for (let i = 0; i < waypoints.length - 1; i++) {
+            if (currentDist <= dists[i]) {
+                const p = currentDist / dists[i];
+                ambX = waypoints[i].x + (waypoints[i + 1].x - waypoints[i].x) * p;
+                ambY = waypoints[i].y + (waypoints[i + 1].y - waypoints[i].y) * p;
+                break;
+            }
+            currentDist -= dists[i];
+        }
+        // Snap to end if finished
+        if (ambProgress >= 1) {
+            ambX = waypoints[waypoints.length - 1].x;
+            ambY = waypoints[waypoints.length - 1].y;
+        }
+    } else {
+        // Idle state: sitting somewhere on path
+        ambX = w * 0.22;
+        ambY = h * 0.35;
+    }
+
+    // Hospital marker
+    drawPin(ctx, waypoints[waypoints.length - 1].x, waypoints[waypoints.length - 1].y, '#2B7FFF', 'H');
+
+    // Patient marker
+    if (isDispatchActive) {
+        // Pulsing patient marker
+        const pulse = (Date.now() % 1000) / 1000;
+        ctx.beginPath();
+        ctx.arc(waypoints[0].x, waypoints[0].y, 14 + (pulse * 10), 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, 77, 79, ${1 - pulse})`;
+        ctx.fill();
+    }
+    drawPin(ctx, waypoints[0].x, waypoints[0].y, '#FF4D4F', '!');
+
+    // Ambulance
+    drawAmb(ctx, ambX, ambY);
+
+    if (!isDispatchActive || ambProgress < 1) {
+        // Range circle around ambulance
+        ctx.strokeStyle = 'rgba(46,196,182,0.25)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(ambX, ambY, 36, 0, Math.PI * 2); ctx.stroke();
+    }
 
     // Labels
     ctx.font = '11px Inter, sans-serif';
@@ -353,8 +429,51 @@ function initMap() {
     ctx.fillText('Your Location', w * 0.05, h * 0.82);
     ctx.fillStyle = '#2B7FFF';
     ctx.fillText('Apollo Hospital', w * 0.62, h * 0.18);
-    ctx.fillStyle = '#2EC4B6';
-    ctx.fillText('ETA 4 min', w * 0.27, h * 0.32);
+
+    if (isDispatchActive) {
+        ctx.fillStyle = '#2EC4B6';
+        let mins = Math.max(0, Math.ceil((1 - ambProgress) * 4));
+        ctx.fillText(mins > 0 ? `ETA ${mins} min` : 'Arrived', ambX + 10, ambY - 20);
+    } else {
+        ctx.fillStyle = '#2EC4B6';
+        ctx.fillText('ETA 4 min', w * 0.27, h * 0.32);
+    }
+
+    ctx.restore();
+}
+
+function animateMap() {
+    if (!isDispatchActive) return;
+
+    ambProgress += 0.0015; // Animation speed
+    if (ambProgress > 1) {
+        ambProgress = 1;
+        drawMapFrame();
+        // Finished
+        setTimeout(() => showToast('✅ Ambulance has arrived at the hospital!', 'success'), 500);
+        return;
+    }
+
+    drawMapFrame();
+    mapAnimationId = requestAnimationFrame(animateMap);
+}
+
+function startLiveTracking() {
+    isDispatchActive = true;
+    ambProgress = 0;
+
+    if (mapAnimationId) cancelAnimationFrame(mapAnimationId);
+    animateMap();
+
+    // Update live chips UI
+    const chipAmb = document.querySelector('.chip-amb .chip-sub');
+    if (chipAmb) chipAmb.textContent = 'En route · ETA 4 min';
+
+    // Scroll to tracking section
+    const trackingSection = document.getElementById('hospitals');
+    if (trackingSection) {
+        trackingSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
 }
 
 function drawPin(ctx, x, y, color, label) {
