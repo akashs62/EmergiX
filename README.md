@@ -1,26 +1,37 @@
-# EmergiX
+# EmergiX 🚑
 
-A modern web application built with HTML, CSS, and JavaScript.
+*Time is Life.*
 
-## Project Structure
+EmergiX is a cutting-edge emergency care coordination platform. It provides rapid doctor triage, advanced ambulance dispatch routing, and smart hospital matching—all designed to ensure help arrives before hope fades.
 
-- `index.html` - Main HTML file
-- `app.js` - JavaScript application logic
-- `style.css` - Styling and layout
-- `logo.png` - Project logo
+## Features 🚀
 
-## Getting Started
+- **Smart Ambulance Dispatch**: Book instantly or run through an AI Triage system. Real-time simulated mapping tracking provided via Leaflet.js.
+- **Video Consultation**: Instant HD video connection with triage doctors and specialists featuring an active timer dashboard.
+- **Post Service Care**: Long-term care solutions with simple booking interfaces for trusted nursing caregivers and post-discharge recovery support.
+- **ER Pre-Alert**: Receive notifications and prep data before the crisis reaches the hospital gate. 
 
-1. Clone the repository
-2. Open `index.html` in your web browser
-3. Explore the application
+## Technology Stack 💻
+- Vanilla HTML, CSS, JavaScript (Frontend UI)
+- React via Babel (Standalone `.jsx` implementations)
+- Leaflet.js Base Maps
+- Node.js & Express (API Mock Authentication Flow)
 
-## Features
+## Getting Started ⚙️
+1. **Clone the repository.**
+2. **Start the local server**: 
+   Since EmergiX utilizes external API requests and React `.jsx` via Babel, it must be accessed on a local server (e.g., using `serve` or `live-server`).
+   ```bash
+   npx serve . -p 3000
+   ```
+3. Navigate to `http://localhost:3000` via your browser.
 
-- Responsive design
-- Interactive user interface
-- Modern JavaScript implementation
+## File Structure 📁
+- `index.html` / `app.js` / `style.css` - Main Landing Page & interactions.
+- `ambulance-dispatch.html/jsx/css` - Fleet routing & live Leaflet map simulation.
+- `video-consultation.html/jsx/css` - Triage call and mock consultation flow.
+- `elder-care.html/jsx/css` - Post-service care listings and checkout.
+- `server.js` - Lightweight Express backend for auth testing (`signup.html` / `signin.html`).
 
-## License
-
+## License 📄
 MIT License
