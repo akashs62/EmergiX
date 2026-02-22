@@ -1,0 +1,344 @@
+/* ambulance-dispatch.css */
+
+.ad-wrapper {
+    width: 100%;
+    margin: 0 auto;
+}
+
+.ad-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.ad-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #1E293B;
+    margin-bottom: 0.5rem;
+}
+
+.ad-subtitle {
+    color: #64748B;
+    font-size: 1.1rem;
+}
+
+/* Home Selection Cards */
+.ad-options-container {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    padding: 2rem 0;
+    flex-wrap: wrap;
+}
+
+.ad-option-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 2.5rem 2rem;
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+    border: 1px solid #E2E8F0;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+}
+
+.ad-option-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
+    border-color: #2B7FFF;
+}
+
+.ad-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+    font-size: 2.5rem;
+}
+
+.ad-icon.blue {
+    background: #EEF6FF;
+    color: #2B7FFF;
+}
+
+.ad-icon.green {
+    background: #E8FBF9;
+    color: #2EC4B6;
+}
+
+.ad-icon.red {
+    background: #FFF0F0;
+    color: #FF4D4F;
+}
+
+.ad-opt-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1E293B;
+    margin-bottom: 1rem;
+}
+
+.ad-opt-desc {
+    color: #64748B;
+    font-size: 1rem;
+    line-height: 1.5;
+}
+
+/* Modals / Forms Container */
+.ad-modal-wrap {
+    background: #fff;
+    border-radius: 16px;
+    max-width: 600px;
+    margin: 0 auto;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+}
+
+.ad-modal-header {
+    background: #1E293B;
+    color: #fff;
+    padding: 1.5rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.ad-modal-body {
+    padding: 2rem;
+}
+
+.ad-form-group {
+    margin-bottom: 1.5rem;
+}
+
+.ad-label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 0.5rem;
+}
+
+.ad-input,
+.ad-select {
+    width: 100%;
+    padding: 0.85rem 1rem;
+    border: 1px solid #CBD5E1;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 1rem;
+    box-sizing: border-box;
+    transition: all 0.2s;
+}
+
+.ad-input:focus,
+.ad-select:focus {
+    outline: none;
+    border-color: #2B7FFF;
+    box-shadow: 0 0 0 3px rgba(43, 127, 255, 0.15);
+}
+
+.ad-btn {
+    width: 100%;
+    padding: 1rem;
+    border: none;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 1.05rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.ad-btn-primary {
+    background: #2B7FFF;
+    color: #fff;
+}
+
+.ad-btn-primary:hover {
+    background: #1D4ED8;
+}
+
+.ad-btn-secondary {
+    background: #E2E8F0;
+    color: #475569;
+    margin-top: 1rem;
+}
+
+.ad-btn-secondary:hover {
+    background: #CBD5E1;
+}
+
+.ad-btn-success {
+    background: #2EC4B6;
+    color: #fff;
+}
+
+.ad-btn-success:hover {
+    background: #20A69A;
+}
+
+.ad-btn-danger {
+    background: #FF4D4F;
+    color: #fff;
+}
+
+.ad-back-btn {
+    background: transparent;
+    border: none;
+    color: #94A3B8;
+    cursor: pointer;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.ad-back-btn:hover {
+    color: #fff;
+}
+
+/* AI Triage Step */
+.ad-progress-bar {
+    width: 100%;
+    height: 6px;
+    background: #E2E8F0;
+    border-radius: 3px;
+    margin-bottom: 2rem;
+    overflow: hidden;
+}
+
+.ad-progress-fill {
+    height: 100%;
+    background: #2EC4B6;
+    transition: width 0.3s ease;
+}
+
+.ad-question {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1E293B;
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+.ad-answer-btns {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.ad-ans-btn {
+    padding: 1rem;
+    border: 2px solid #E2E8F0;
+    background: #fff;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 500;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.ad-ans-btn:hover {
+    border-color: #2B7FFF;
+    color: #2B7FFF;
+    background: #EEF6FF;
+}
+
+/* Status Cards */
+.ad-result-card {
+    text-align: center;
+    padding: 1rem;
+}
+
+.lvl-critical {
+    color: #FF4D4F;
+}
+
+.lvl-moderate {
+    color: #F59E0B;
+}
+
+.lvl-low {
+    color: #2EC4B6;
+}
+
+.ad-result-val {
+    font-size: 2.5rem;
+    font-weight: 800;
+    margin: 0.5rem 0 1.5rem;
+}
+
+.ad-result-box {
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    display: flex;
+    justify-content: space-around;
+}
+
+.ad-box-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.ad-box-lbl {
+    font-size: 0.85rem;
+    color: #64748B;
+    font-weight: 600;
+}
+
+.ad-box-val {
+    font-size: 1.1rem;
+    color: #1E293B;
+    font-weight: 700;
+}
+
+/* Mock Tracker */
+.ad-tracker {
+    background: #1E293B;
+    border-radius: 12px;
+    padding: 2rem;
+    color: #fff;
+    text-align: center;
+}
+
+.tracker-dot {
+    width: 16px;
+    height: 16px;
+    background: #2EC4B6;
+    border-radius: 50%;
+    margin: 0 auto 1rem;
+    box-shadow: 0 0 0 0 rgba(46, 196, 182, 0.7);
+    animation: trackingPulse 1.5s infinite;
+}
+
+@keyframes trackingPulse {
+    0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(46, 196, 182, 0.7);
+    }
+
+    70% {
+        transform: scale(1);
+        box-shadow: 0 0 0 15px rgba(46, 196, 182, 0);
+    }
+
+    100% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(46, 196, 182, 0);
+    }
+}

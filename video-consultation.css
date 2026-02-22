@@ -1,0 +1,362 @@
+/* video-consultation.css */
+.vc-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+}
+
+.vc-header {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.vc-title {
+    font-size: 2.5rem;
+    color: #1E293B;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.vc-subtitle {
+    color: #64748B;
+    font-size: 1.1rem;
+}
+
+.vc-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    background: white;
+    padding: 1rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.vc-input,
+.vc-select,
+.vc-textarea {
+    padding: 0.75rem 1rem;
+    border: 1px solid #E2E8F0;
+    border-radius: 8px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    outline: none;
+    flex: 1;
+    min-width: 200px;
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.vc-input:focus,
+.vc-select:focus,
+.vc-textarea:focus {
+    border-color: #2B7FFF;
+    box-shadow: 0 0 0 3px rgba(43, 127, 255, 0.15);
+}
+
+.vc-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.5rem;
+}
+
+.vc-card {
+    background: white;
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    transition: transform 0.2s, box-shadow 0.2s;
+    border: 1px solid #F1F5F9;
+    position: relative;
+}
+
+.vc-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
+}
+
+.vc-card-header {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.vc-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #EEF6FF, #DBEAFE);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #2B7FFF;
+}
+
+.vc-name {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1E293B;
+    margin: 0 0 0.25rem 0;
+}
+
+.vc-spec {
+    color: #2B7FFF;
+    font-size: 0.9rem;
+    font-weight: 500;
+    background: #EEF6FF;
+    padding: 4px 8px;
+    border-radius: 4px;
+    display: inline-block;
+    margin-bottom: 0.5rem;
+}
+
+.vc-stats {
+    display: flex;
+    justify-content: space-between;
+    color: #64748B;
+    font-size: 0.85rem;
+    margin-bottom: 1.25rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px dashed #E2E8F0;
+}
+
+.vc-price {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1E293B;
+    margin-bottom: 1rem;
+    text-align: right;
+}
+
+.vc-status {
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.vc-status::before {
+    content: '';
+    display: block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+}
+
+.status-avail {
+    background: #DCFCE7;
+    color: #166534;
+}
+
+.status-avail::before {
+    background: #166534;
+}
+
+.status-busy {
+    background: #FEE2E2;
+    color: #991B1B;
+}
+
+.status-busy::before {
+    background: #991B1B;
+}
+
+.vc-btn {
+    width: 100%;
+    padding: 0.85rem;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.vc-btn-primary {
+    background: #2B7FFF;
+    color: white;
+}
+
+.vc-btn-primary:hover:not(:disabled) {
+    background: #2563EB;
+}
+
+.vc-btn-primary:disabled {
+    background: #CBD5E1;
+    cursor: not-allowed;
+}
+
+.vc-form-group {
+    margin-bottom: 1rem;
+}
+
+.vc-form-group label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 0.4rem;
+}
+
+/* Call Screen */
+.vc-call-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #0F172A;
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+}
+
+.vc-call-header {
+    background: rgba(15, 23, 42, 0.9);
+    padding: 1rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: white;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.vc-timer {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-family: monospace;
+    font-size: 1.1rem;
+}
+
+.vc-call-body {
+    flex: 1;
+    display: flex;
+    padding: 2rem;
+    gap: 2rem;
+    height: 100%;
+    box-sizing: border-box;
+}
+
+.vc-video-main {
+    flex: 3;
+    background: #1E293B;
+    border-radius: 16px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #64748B;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.vc-video-patient {
+    position: absolute;
+    bottom: 24px;
+    right: 24px;
+    width: 240px;
+    height: 160px;
+    background: #334155;
+    border-radius: 12px;
+    border: 2px solid white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #94A3B8;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.vc-call-sidebar {
+    flex: 1;
+    background: #1E293B;
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    max-width: 350px;
+}
+
+.vc-chat-header {
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    color: white;
+    font-weight: 600;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.vc-chat-body {
+    flex: 1;
+    padding: 1rem;
+    color: #94A3B8;
+    font-size: 0.9rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+}
+
+.vc-chat-input-wrap {
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.2);
+    display: flex;
+    gap: 0.5rem;
+}
+
+.vc-chat-input-wrap input {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    padding: 0.75rem;
+    border-radius: 8px;
+    color: white;
+    outline: none;
+}
+
+.vc-call-controls {
+    padding: 1.5rem;
+    background: rgba(15, 23, 42, 0.9);
+    display: flex;
+    justify-content: center;
+    gap: 1.5rem;
+}
+
+.btn-circle {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 1.25rem;
+    transition: transform 0.2s;
+}
+
+.btn-circle:hover {
+    transform: scale(1.05);
+}
+
+.bg-red {
+    background: #FF4D4F;
+    color: white;
+}
+
+.bg-gray {
+    background: #334155;
+    color: white;
+}
