@@ -498,89 +498,44 @@
         <div class="container">
             <div class="section-header">
                 <span class="section-tag">TESTIMONIALS</span>
-                <h2 class="section-title">Trusted by Families Across India</h2>
-                <p class="section-subtitle">Real stories from people we've helped in their most critical moments.</p>
+                <h2 class="section-title">Leave a Review</h2>
+                <p class="section-subtitle">We value your feedback. Tell us about your experience with EmergiX.</p>
             </div>
-            <div class="testimonials-grid">
-
-                <article class="testi-card featured-testi">
-                    <div class="testi-stars">★★★★★</div>
-                    <p class="testi-text">"EmergiX saved my father's life. The ambulance arrived in 7 minutes and the
-                        hospital was perfectly matched for his cardiac emergency. I'll be forever grateful."</p>
-                    <div class="testi-author">
-                        <div class="testi-avatar" style="background:linear-gradient(135deg,#FF4D4F,#F97316);">P</div>
-                        <div>
-                            <div class="testi-name">Priya Sharma</div>
-                            <div class="testi-city">Delhi, India</div>
-                        </div>
+            <div class="review-form-container"
+                style="max-width: 600px; margin: 0 auto; background: white; padding: 2.5rem; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); text-align: left;">
+                <form class="review-form"
+                    onsubmit="event.preventDefault(); showToast('Thank you! Your review has been submitted successfully.', 'success'); this.reset();">
+                    <div class="form-group" style="margin-bottom: 1.5rem;">
+                        <label for="revName" class="form-label"
+                            style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: #1E293B;">Full
+                            Name</label>
+                        <input type="text" id="revName" class="form-input" placeholder="Your Name" required
+                            style="width: 100%; padding: 0.8rem; border: 1px solid #E2E8F0; border-radius: 8px;" />
                     </div>
-                </article>
-
-                <article class="testi-card">
-                    <div class="testi-stars">★★★★★</div>
-                    <p class="testi-text">"The doctor triage was incredibly fast. Within 2 minutes they assessed my
-                        mother's condition and dispatched an ALS ambulance. Absolutely life-saving service."</p>
-                    <div class="testi-author">
-                        <div class="testi-avatar" style="background:linear-gradient(135deg,#27AE60,#2B7FFF);">R</div>
-                        <div>
-                            <div class="testi-name">Rajesh Kumar</div>
-                            <div class="testi-city">Mumbai, India</div>
-                        </div>
+                    <div class="form-group" style="margin-bottom: 1.5rem;">
+                        <label for="revRating" class="form-label"
+                            style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: #1E293B;">Rating</label>
+                        <select id="revRating" class="form-input" required
+                            style="width: 100%; padding: 0.8rem; border: 1px solid #E2E8F0; border-radius: 8px;">
+                            <option value="5">★★★★★ (5/5)</option>
+                            <option value="4">★★★★☆ (4/5)</option>
+                            <option value="3">★★★☆☆ (3/5)</option>
+                            <option value="2">★★☆☆☆ (2/5)</option>
+                            <option value="1">★☆☆☆☆ (1/5)</option>
+                        </select>
                     </div>
-                </article>
-
-                <article class="testi-card">
-                    <div class="testi-stars">★★★★★</div>
-                    <p class="testi-text">"Post-discharge elder care has been a blessing. The caregiver assigned to my
-                        grandmother is professional and compassionate. Couldn't ask for more."</p>
-                    <div class="testi-author">
-                        <div class="testi-avatar" style="background:linear-gradient(135deg,#7C3AED,#EC4899);">A</div>
-                        <div>
-                            <div class="testi-name">Anita Patel</div>
-                            <div class="testi-city">Bangalore, India</div>
-                        </div>
+                    <div class="form-group" style="margin-bottom: 1.5rem;">
+                        <label for="revMsg" class="form-label"
+                            style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: #1E293B;">Your
+                            Experience</label>
+                        <textarea id="revMsg" class="form-input" rows="4"
+                            placeholder="Tell us about how we helped you..." required
+                            style="width: 100%; padding: 0.8rem; border: 1px solid #E2E8F0; border-radius: 8px; resize: vertical; font-family: inherit;"></textarea>
                     </div>
-                </article>
-
-                <article class="testi-card">
-                    <div class="testi-stars">★★★★★</div>
-                    <p class="testi-text">"The family tracking link was a game-changer. My whole family tracked the
-                        ambulance in real time without downloading any app. Truly innovative."</p>
-                    <div class="testi-author">
-                        <div class="testi-avatar" style="background:linear-gradient(135deg,#22C55E,#27AE60);">S</div>
-                        <div>
-                            <div class="testi-name">Suresh Mehta</div>
-                            <div class="testi-city">Chennai, India</div>
-                        </div>
-                    </div>
-                </article>
-
-                <article class="testi-card">
-                    <div class="testi-stars">★★★★★</div>
-                    <p class="testi-text">"Hospital ER was already prepared when we arrived. They had the patient file
-                        and the right specialist waiting. Zero delay at the gate. Exceptional system."</p>
-                    <div class="testi-author">
-                        <div class="testi-avatar" style="background:linear-gradient(135deg,#2B7FFF,#7C3AED);">M</div>
-                        <div>
-                            <div class="testi-name">Dr. Meena Iyer</div>
-                            <div class="testi-city">Hyderabad, India</div>
-                        </div>
-                    </div>
-                </article>
-
-                <article class="testi-card">
-                    <div class="testi-stars">★★★★★</div>
-                    <p class="testi-text">"Smart routing avoided traffic completely and got us to the trauma center
-                        fast. The paramedic was trained specifically for trauma emergencies. Outstanding."</p>
-                    <div class="testi-author">
-                        <div class="testi-avatar" style="background:linear-gradient(135deg,#F59E0B,#FF4D4F);">V</div>
-                        <div>
-                            <div class="testi-name">Vikram Singh</div>
-                            <div class="testi-city">Pune, India</div>
-                        </div>
-                    </div>
-                </article>
-
+                    <button type="submit" class="btn-brand"
+                        style="width: 100%; padding: 1rem; border: none; border-radius: 8px; font-weight: 600; font-size: 1rem; cursor: pointer;">Submit
+                        Review</button>
+                </form>
             </div>
         </div>
     </section>
