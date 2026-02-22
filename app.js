@@ -150,10 +150,10 @@ document.addEventListener('keydown', e => {
         document.querySelectorAll('.modal-overlay.open').forEach(m => closeModal(m.id));
 });
 
-// Emergency buttons → Emergency modal
+// Emergency buttons → Emergency modal / Redirection
 ['btnHeroEmergency', 'btnBannerEmergency'].forEach(id => {
     const el = document.getElementById(id);
-    if (el) el.addEventListener('click', () => openModal('modalEmergency'));
+    if (el) el.addEventListener('click', () => { window.location.href = 'ambulance-dispatch.html'; });
 });
 
 // Sign In button → Sign In modal

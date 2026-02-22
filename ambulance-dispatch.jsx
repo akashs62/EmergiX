@@ -201,7 +201,7 @@ const TrackingScreen = ({ bookingData, onHome }) => {
 
         let map;
         let ambMarker;
-        let reqAnimId;
+        let intervalId;
 
         // Dummy coordinates for patient and ambulance initial location
         const patientLatLng = [28.6139, 77.2090];
@@ -248,33 +248,36 @@ const TrackingScreen = ({ bookingData, onHome }) => {
         ambMarker = L.marker(initialAmbLatLng, { icon: ambIcon, zIndexOffset: 1000 }).addTo(map);
 
         let progress = 0;
-        const animate = () => {
-            if (progress < ambRoute.length - 1) {
-                progress += 0.05; // speed
-                const index = Math.floor(progress);
+        intervalId = setInterval(() => {
+            progress += 0.05;
+            const index = Math.floor(progress);
 
-                if (index >= ambRoute.length - 1) {
-                    ambMarker.setLatLng(ambRoute[ambRoute.length - 1]);
-                    return;
-                }
-
-                const currentP = ambRoute[index];
-                const nextP = ambRoute[index + 1];
-                const t = progress - index;
-
-                const lat = currentP[0] + (nextP[0] - currentP[0]) * t;
-                const lng = currentP[1] + (nextP[1] - currentP[1]) * t;
-
-                ambMarker.setLatLng([lat, lng]);
-
-                reqAnimId = setTimeout(() => requestAnimationFrame(animate), 80);
+            if (index >= ambRoute.length - 1) {
+                ambMarker.setLatLng(ambRoute[ambRoute.length - 1]);
+                const etaEl = document.getElementById('ad-eta-display');
+                if (etaEl) etaEl.innerText = 'Arrived';
+                clearInterval(intervalId);
+                return;
             }
-        };
 
-        animate();
+            const currentP = ambRoute[index];
+            const nextP = ambRoute[index + 1];
+            const t = progress - index;
+
+            const lat = currentP[0] + (nextP[0] - currentP[0]) * t;
+            const lng = currentP[1] + (nextP[1] - currentP[1]) * t;
+
+            ambMarker.setLatLng([lat, lng]);
+
+            const remaining = Math.max(1, Math.ceil(4 - (progress / (ambRoute.length - 1)) * 4));
+            const etaEl = document.getElementById('ad-eta-display');
+            if (etaEl && etaEl.innerText !== 'Arrived') {
+                etaEl.innerText = remaining + ' mins';
+            }
+        }, 100);
 
         return () => {
-            clearTimeout(reqAnimId);
+            clearInterval(intervalId);
             map.remove();
         };
     }, [showMap]);
@@ -290,7 +293,7 @@ const TrackingScreen = ({ bookingData, onHome }) => {
                     <div id="ambMapCanvas" style={{ width: '100%', height: '400px', background: '#EEF6FF' }}></div>
                     <div style={{ padding: '1.5rem', textAlign: 'center' }}>
                         <strong style={{ fontSize: '1.2rem', color: '#1E293B', display: 'block' }}>Ambulance {bookingData.vehicleId} En Route</strong>
-                        <p style={{ color: '#64748B', margin: '0.5rem 0' }}>ETA: <strong style={{ color: '#2EC4B6' }}>4 mins</strong> • {bookingData.ambType} Unit</p>
+                        <p style={{ color: '#64748B', margin: '0.5rem 0' }}>ETA: <strong id="ad-eta-display" style={{ color: '#2EC4B6' }}>4 mins</strong> • {bookingData.ambType} Unit</p>
                     </div>
                 </div>
             </div>
@@ -336,7 +339,7 @@ const AmbulanceDispatchApp = () => {
     const handleDirectConfirm = (data) => {
         // Mock save
         const id = 'EMR-' + Math.floor(1000 + Math.random() * 9000);
-        setBookingRef({ id, ambType: data.ambType, vehicleId: 'ALS-204' });
+        setBookingRef({ id, ambType: data.ambType, vehicleId: `${data.ambType}-204` });
         setView('tracking');
     };
 
@@ -348,7 +351,7 @@ const AmbulanceDispatchApp = () => {
     const handleProceedFromTriage = (ambType) => {
         // For simplicity, directly tracking for now. In real app, might ask for address here if not known.
         const id = 'EMR-' + Math.floor(1000 + Math.random() * 9000);
-        setBookingRef({ id, ambType, vehicleId: 'ALS-990' });
+        setBookingRef({ id, ambType, vehicleId: `${ambType}-990` });
         setView('tracking');
     };
 
