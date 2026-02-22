@@ -4,6 +4,36 @@
    EmergiX — Interactive JavaScript
    ============================================================ */
 
+/* ---- AUTH STATE CHECK ---- */
+document.addEventListener('DOMContentLoaded', () => {
+    const authHeaderContainer = document.getElementById('auth-header-container');
+    const token = localStorage.getItem('token');
+    const userEmail = localStorage.getItem('userEmail');
+
+    if (token && userEmail && authHeaderContainer) {
+        // Strip the email for username, or just show the email
+        const username = userEmail.split('@')[0];
+
+        authHeaderContainer.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="color: #fff; font-weight: 500; font-size: 14px; opacity: 0.9;">
+                    Hi, <strong style="color: #27AE60;">${username}</strong>
+                </span>
+                <button onclick="logout()" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-family: inherit; font-size: 13px; transition: all 0.2s;"
+                onmouseover="this.style.background='rgba(231, 76, 60, 0.8)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">
+                    Logout
+                </button>
+            </div>
+        `;
+    }
+});
+
+window.logout = function () {
+    localStorage.removeItem('token');
+    localStorage.removeItem('userEmail');
+    window.location.reload();
+};
+
 /* ---- NAVBAR SCROLL ---- */
 const navbar = document.getElementById('navbar');
 const scrollTopBtn = document.getElementById('scrollTop');
@@ -293,219 +323,123 @@ window.toggleFaq = function (id) {
 };
 
 /* ============================================================
-   MAP CANVAS — City grid tracking visualization
+   LEAFLET MAP — Live Tracking Visualization
    ============================================================ */
-let mapAnimationId;
-let ambProgress = 0;
+let map;
+let ambMarker;
 let isDispatchActive = false;
+let ambRoute = [];
+let ambProgress = 0;
+let routeLine;
 
 function initMap() {
-    drawMapFrame();
-    if (isDispatchActive && !mapAnimationId) {
-        animateMap();
-    }
-}
+    if (map) return; // already initialized
 
-function drawMapFrame() {
-    const canvas = document.getElementById('mapCanvas');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    // Default center (e.g., New Delhi as placeholder)
+    const patientLatLng = [28.6139, 77.2090];
+    const hospitalLatLng = [28.6250, 77.1900];
 
-    // Setup high-res canvas scaling if not done
-    const scale = window.devicePixelRatio;
-    if (canvas.width !== canvas.offsetWidth * scale) {
-        canvas.width = canvas.offsetWidth * scale;
-        canvas.height = 300 * scale;
-        canvas.style.height = '300px';
-    }
+    map = L.map('mapCanvas').setView(patientLatLng, 14);
 
-    ctx.save();
-    ctx.scale(scale, scale);
-    const w = canvas.offsetWidth, h = 300;
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+        subdomains: 'abcd',
+        maxZoom: 20
+    }).addTo(map);
 
-    // Background
-    const bg = ctx.createLinearGradient(0, 0, w, h);
-    bg.addColorStop(0, '#EEF6FF');
-    bg.addColorStop(1, '#F0FAF9');
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, w, h);
-
-    // Grid roads
-    ctx.strokeStyle = 'rgba(43,127,255,0.1)';
-    ctx.lineWidth = 1;
-    for (let x = 0; x < w; x += 32) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
-    for (let y = 0; y < h; y += 32) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
-
-    // Main roads (highlighted)
-    [[0, h * 0.35, w, h * 0.35], [0, h * 0.68, w, h * 0.68], [w * 0.22, 0, w * 0.22, h], [w * 0.6, 0, w * 0.6, h]].forEach(([x1, y1, x2, y2]) => {
-        ctx.strokeStyle = 'rgba(43,127,255,0.18)';
-        ctx.lineWidth = 2.5;
-        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    // Initial markers
+    const patientIcon = L.divIcon({
+        className: 'custom-pin',
+        html: `<div style="background:#FF4D4F; color:#fff; width:24px; height:24px; border-radius:50%; text-align:center; line-height:24px; font-weight:bold; box-shadow:0 0 10px rgba(255,77,79,0.5);">!</div>`,
+        iconSize: [24, 24],
+        iconAnchor: [12, 12]
     });
 
-    // Define Waypoints
-    const waypoints = [
-        { x: w * 0.15, y: h * 0.72 }, // Patient
-        { x: w * 0.22, y: h * 0.72 },
-        { x: w * 0.22, y: h * 0.35 },
-        { x: w * 0.6, y: h * 0.35 },
-        { x: w * 0.6, y: h * 0.2 } // Hospital
+    const hospitalIcon = L.divIcon({
+        className: 'custom-pin',
+        html: `<div style="background:#2B7FFF; color:#fff; width:28px; height:28px; border-radius:50%; text-align:center; line-height:28px; font-weight:bold; box-shadow:0 0 10px rgba(43,127,255,0.5);">H</div>`,
+        iconSize: [28, 28],
+        iconAnchor: [14, 14]
+    });
+
+    L.marker(patientLatLng, { icon: patientIcon }).addTo(map).bindPopup('Your Location');
+    L.marker(hospitalLatLng, { icon: hospitalIcon }).addTo(map).bindPopup('Apollo Hospital');
+
+    // Generating a dummy route between patient and hospital
+    ambRoute = [
+        patientLatLng,
+        [28.6150, 77.2050],
+        [28.6180, 77.2000],
+        [28.6220, 77.1950],
+        hospitalLatLng
     ];
 
-    // Route (dashed teal)
-    ctx.strokeStyle = '#2EC4B6';
-    ctx.lineWidth = 2.5;
-    ctx.setLineDash([7, 5]);
-    ctx.beginPath();
-    ctx.moveTo(waypoints[0].x, waypoints[0].y);
-    for (let i = 1; i < waypoints.length; i++) {
-        ctx.lineTo(waypoints[i].x, waypoints[i].y);
-    }
-    ctx.stroke();
-    ctx.setLineDash([]);
+    routeLine = L.polyline(ambRoute, {
+        color: '#2EC4B6',
+        weight: 4,
+        dashArray: '10, 10',
+        opacity: 0.7
+    }).addTo(map);
 
-    // Calculate total path length for ambulance interpolation
-    let totalDist = 0;
-    const dists = [];
-    for (let i = 0; i < waypoints.length - 1; i++) {
-        let d = Math.hypot(waypoints[i + 1].x - waypoints[i].x, waypoints[i + 1].y - waypoints[i].y);
-        dists.push(d);
-        totalDist += d;
-    }
+    const ambIcon = L.divIcon({
+        className: 'custom-amb-pin',
+        html: `<div style="background:#2EC4B6; color:#fff; width:36px; height:26px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:16px; box-shadow:0 0 12px rgba(46,196,182,0.6);">🚑</div>`,
+        iconSize: [36, 26],
+        iconAnchor: [18, 13]
+    });
 
-    // Determine current ambulance position based on ambProgress
-    let currentDist = ambProgress * totalDist;
-    let ambX = waypoints[0].x;
-    let ambY = waypoints[0].y;
-
-    if (isDispatchActive) {
-        for (let i = 0; i < waypoints.length - 1; i++) {
-            if (currentDist <= dists[i]) {
-                const p = currentDist / dists[i];
-                ambX = waypoints[i].x + (waypoints[i + 1].x - waypoints[i].x) * p;
-                ambY = waypoints[i].y + (waypoints[i + 1].y - waypoints[i].y) * p;
-                break;
-            }
-            currentDist -= dists[i];
-        }
-        // Snap to end if finished
-        if (ambProgress >= 1) {
-            ambX = waypoints[waypoints.length - 1].x;
-            ambY = waypoints[waypoints.length - 1].y;
-        }
-    } else {
-        // Idle state: sitting somewhere on path
-        ambX = w * 0.22;
-        ambY = h * 0.35;
-    }
-
-    // Hospital marker
-    drawPin(ctx, waypoints[waypoints.length - 1].x, waypoints[waypoints.length - 1].y, '#2B7FFF', 'H');
-
-    // Patient marker
-    if (isDispatchActive) {
-        // Pulsing patient marker
-        const pulse = (Date.now() % 1000) / 1000;
-        ctx.beginPath();
-        ctx.arc(waypoints[0].x, waypoints[0].y, 14 + (pulse * 10), 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(255, 77, 79, ${1 - pulse})`;
-        ctx.fill();
-    }
-    drawPin(ctx, waypoints[0].x, waypoints[0].y, '#FF4D4F', '!');
-
-    // Ambulance
-    drawAmb(ctx, ambX, ambY);
-
-    if (!isDispatchActive || ambProgress < 1) {
-        // Range circle around ambulance
-        ctx.strokeStyle = 'rgba(46,196,182,0.25)';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.arc(ambX, ambY, 36, 0, Math.PI * 2); ctx.stroke();
-    }
-
-    // Labels
-    ctx.font = '11px Inter, sans-serif';
-    ctx.fillStyle = '#64748B';
-    ctx.fillText('Your Location', w * 0.05, h * 0.82);
-    ctx.fillStyle = '#2B7FFF';
-    ctx.fillText('Apollo Hospital', w * 0.62, h * 0.18);
-
-    if (isDispatchActive) {
-        ctx.fillStyle = '#2EC4B6';
-        let mins = Math.max(0, Math.ceil((1 - ambProgress) * 4));
-        ctx.fillText(mins > 0 ? `ETA ${mins} min` : 'Arrived', ambX + 10, ambY - 20);
-    } else {
-        ctx.fillStyle = '#2EC4B6';
-        ctx.fillText('ETA 4 min', w * 0.27, h * 0.32);
-    }
-
-    ctx.restore();
-}
-
-function animateMap() {
-    if (!isDispatchActive) return;
-
-    ambProgress += 0.0015; // Animation speed
-    if (ambProgress > 1) {
-        ambProgress = 1;
-        drawMapFrame();
-        // Finished
-        setTimeout(() => showToast('✅ Ambulance has arrived at the hospital!', 'success'), 500);
-        return;
-    }
-
-    drawMapFrame();
-    mapAnimationId = requestAnimationFrame(animateMap);
+    // Start ambulance at patient loc
+    ambMarker = L.marker(patientLatLng, { icon: ambIcon, zIndexOffset: 1000 }).addTo(map);
 }
 
 function startLiveTracking() {
     isDispatchActive = true;
     ambProgress = 0;
 
-    if (mapAnimationId) cancelAnimationFrame(mapAnimationId);
-    animateMap();
-
-    // Update live chips UI
-    const chipAmb = document.querySelector('.chip-amb .chip-sub');
-    if (chipAmb) chipAmb.textContent = 'En route · ETA 4 min';
-
     // Scroll to tracking section
     const trackingSection = document.getElementById('hospitals');
     if (trackingSection) {
         trackingSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
+
+    // Invalidate size to ensure rendering if hidden earlier
+    if (map) map.invalidateSize();
+
+    // Update live chips UI
+    const chipAmb = document.querySelector('.chip-amb .chip-sub');
+    if (chipAmb) chipAmb.textContent = 'En route · ETA 4 min';
+
+    animateAmbulance();
 }
 
-function drawPin(ctx, x, y, color, label) {
-    ctx.save();
-    ctx.shadowBlur = 14;
-    ctx.shadowColor = color + '80';
-    ctx.fillStyle = color;
-    ctx.beginPath(); ctx.arc(x, y, 14, 0, Math.PI * 2); ctx.fill();
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 11px Inter, sans-serif';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(label, x, y);
-    ctx.restore();
+function animateAmbulance() {
+    if (!isDispatchActive) return;
+
+    if (ambProgress < ambRoute.length - 1) {
+        ambProgress += 0.05; // Animation speed
+        const index = Math.floor(ambProgress);
+
+        if (index >= ambRoute.length - 1) {
+            ambMarker.setLatLng(ambRoute[ambRoute.length - 1]);
+            showToast('✅ Ambulance has arrived at the hospital!', 'success');
+            return;
+        }
+
+        const currentP = ambRoute[index];
+        const nextP = ambRoute[index + 1];
+        const t = ambProgress - index;
+
+        const lat = currentP[0] + (nextP[0] - currentP[0]) * t;
+        const lng = currentP[1] + (nextP[1] - currentP[1]) * t;
+
+        ambMarker.setLatLng([lat, lng]);
+
+        requestAnimationFrame(() => setTimeout(animateAmbulance, 60));
+    }
 }
 
-function drawAmb(ctx, x, y) {
-    ctx.save();
-    ctx.fillStyle = '#2EC4B6';
-    ctx.shadowBlur = 12;
-    ctx.shadowColor = 'rgba(46,196,182,0.6)';
-    ctx.beginPath(); ctx.roundRect(x - 14, y - 10, 28, 20, 5); ctx.fill();
-    ctx.shadowBlur = 0;
-    ctx.font = '14px Arial';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('🚑', x, y);
-    ctx.restore();
-}
-
-// Init map on load + resize
+// Init map on load
 window.addEventListener('load', initMap);
-window.addEventListener('resize', initMap);
 
 /* ============================================================
    SERVICE CARD TILT ON HOVER
