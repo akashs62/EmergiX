@@ -8,7 +8,7 @@ EmergiX is a cutting-edge emergency care coordination platform. It provides rapi
 
 - **Smart Ambulance Dispatch**: Book instantly or run through an AI Triage system. Real-time simulated mapping tracking provided via Leaflet.js.
 - **Video Consultation**: Instant HD video connection with triage doctors and specialists featuring an active timer dashboard.
-- **Post Service Care**: Long-term care solutions with simple booking interfaces for trusted nursing caregivers and post-discharge recovery support.
+- **Post Care Service**: Long-term care solutions with simple booking interfaces for trusted nursing caregivers and post-discharge recovery support.
 - **ER Pre-Alert**: Receive notifications and prep data before the crisis reaches the hospital gate. 
 
 ## Technology Stack 💻
