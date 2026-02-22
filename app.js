@@ -336,8 +336,8 @@ function initMap() {
     if (map) return; // already initialized
 
     // Default center (e.g., Kolkata as placeholder)
-    const patientLatLng = [22.5726, 88.3639];
-    const hospitalLatLng = [22.5850, 88.3750];
+    const patientLatLng = [22.57286, 88.36401];
+    const hospitalLatLng = [22.58515, 88.37505];
 
     map = L.map('mapCanvas').setView(patientLatLng, 14);
 
@@ -368,9 +368,9 @@ function initMap() {
     // Generating a dummy route between patient and hospital
     ambRoute = [
         patientLatLng,
-        [22.5760, 88.3670],
-        [22.5800, 88.3700],
-        [22.5820, 88.3730],
+        [22.57367, 88.36581],
+        [22.57703, 88.36409],
+        [22.58571, 88.36753],
         hospitalLatLng
     ];
 

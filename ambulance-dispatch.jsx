@@ -204,8 +204,8 @@ const TrackingScreen = ({ bookingData, onHome }) => {
         let intervalId;
 
         // Dummy coordinates for patient and ambulance initial location
-        const patientLatLng = [22.5726, 88.3639]; // Kolkata center
-        const initialAmbLatLng = [22.5600, 88.3500];
+        const patientLatLng = [22.57286, 88.36401]; // Kolkata center
+        const initialAmbLatLng = [22.55994, 88.35056];
 
         map = L.map('ambMapCanvas').setView(patientLatLng, 14);
 
@@ -225,9 +225,9 @@ const TrackingScreen = ({ bookingData, onHome }) => {
 
         const ambRoute = [
             initialAmbLatLng,
-            [22.5630, 88.3540],
-            [22.5660, 88.3580],
-            [22.5690, 88.3610],
+            [22.56582, 88.35172],
+            [22.56857, 88.35729],
+            [22.57534, 88.35961],
             patientLatLng
         ];
 
