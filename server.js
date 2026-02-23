@@ -11,7 +11,7 @@ app.use(cors());
 app.use(express.json());
 
 // Serve static files from the current directory (HTML, CSS, JS)
-app.use(express.static(path.join(__dirname, '.')));
+app.use(express.static(path.join(__dirname, '.'), { extensions: ['html'] }));
 
 // ============================================
 // API ROUTES
