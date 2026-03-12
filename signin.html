@@ -168,8 +168,8 @@
             text-decoration: underline;
         }
 
-        /* ── Doctor-specific Fields (slide animation) ── */
-        .doctor-fields {
+        /* ── Role-specific Fields (slide animation) ── */
+        .role-extra-fields {
             max-height: 0;
             overflow: hidden;
             opacity: 0;
@@ -177,7 +177,7 @@
             margin-bottom: 0;
         }
 
-        .doctor-fields.visible {
+        .role-extra-fields.visible {
             max-height: 120px;
             opacity: 1;
             margin-bottom: 0;
@@ -204,6 +204,11 @@
         .role-badge.doctor {
             background: rgba(79, 70, 229, 0.1);
             color: #4f46e5;
+        }
+
+        .role-badge.ambulance {
+            background: rgba(234, 88, 12, 0.1);
+            color: #ea580c;
         }
 
         .role-badge svg {
@@ -256,6 +261,18 @@
                 </svg>
                 Doctor
             </button>
+            <button class="role-tab" id="tab-ambulance" onclick="switchRole('ambulance')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <path d="M10 10H6" />
+                    <path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2" />
+                    <path
+                        d="M19 18h2a1 1 0 0 0 1-1v-3.28a1 1 0 0 0-.684-.948l-1.923-.641a1 1 0 0 1-.578-.502l-1.539-3.076A1 1 0 0 0 16.382 8H14" />
+                    <circle cx="17" cy="18" r="2" />
+                    <circle cx="7" cy="18" r="2" />
+                </svg>
+                Ambulance
+            </button>
         </div>
 
         <form id="signin-form">
@@ -274,10 +291,18 @@
             </div>
 
             <!-- Doctor-specific fields -->
-            <div class="doctor-fields" id="doctor-fields">
+            <div class="role-extra-fields" id="doctor-fields">
                 <div class="form-group">
                     <label for="license" class="form-label">Medical License No.</label>
                     <input type="text" id="license" class="form-input" placeholder="e.g. MCI-123456">
+                </div>
+            </div>
+
+            <!-- Ambulance Provider fields -->
+            <div class="role-extra-fields" id="ambulance-fields">
+                <div class="form-group">
+                    <label for="fleet-id" class="form-label">Fleet Registration ID</label>
+                    <input type="text" id="fleet-id" class="form-input" placeholder="e.g. FLT-98765">
                 </div>
             </div>
 
@@ -296,66 +321,65 @@
 
     <script>
         let currentRole = 'patient';
+        const ROLES = {
+            patient: {
+                accent: 'var(--teal)', gradient: 'var(--grad-brand)',
+                focus: 'rgba(39,174,96,0.1)', shadow: 'rgba(39,174,96,0.25)',
+                badgeClass: 'patient', badgeText: 'Patient Login', btnText: 'Sign In',
+                title: 'Welcome Back', subtitle: 'Sign in to your EmergiX account to manage emergencies and view real-time tracking.',
+                svgIcon: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+                successColor: '#27ae60', redirect: 'index.html'
+            },
+            doctor: {
+                accent: '#4f46e5', gradient: 'linear-gradient(135deg,#4f46e5,#7c3aed)',
+                focus: 'rgba(79,70,229,0.15)', shadow: 'rgba(79,70,229,0.3)',
+                badgeClass: 'doctor', badgeText: 'Doctor Login', btnText: 'Sign In as Doctor',
+                title: 'Doctor Portal', subtitle: 'Sign in to access patient records, consultations, and emergency alerts.',
+                svgIcon: '<path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3"/><path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4"/><circle cx="20" cy="10" r="2"/>',
+                successColor: '#4f46e5', redirect: 'doctor-dashboard.html'
+            },
+            ambulance: {
+                accent: '#ea580c', gradient: 'linear-gradient(135deg,#ea580c,#f97316)',
+                focus: 'rgba(234,88,12,0.15)', shadow: 'rgba(234,88,12,0.3)',
+                badgeClass: 'ambulance', badgeText: 'Ambulance Login', btnText: 'Sign In as Provider',
+                title: 'Ambulance Portal', subtitle: 'Sign in to manage fleet, dispatch, and real-time ambulance tracking.',
+                svgIcon: '<path d="M10 10H6"/><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.28a1 1 0 0 0-.684-.948l-1.923-.641a1 1 0 0 1-.578-.502l-1.539-3.076A1 1 0 0 0 16.382 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/>',
+                successColor: '#ea580c', redirect: 'ambulance-dashboard.html'
+            }
+        };
 
         function switchRole(role) {
             currentRole = role;
+            const r = ROLES[role];
             const container = document.querySelector('.auth-container');
-            const tabPatient = document.getElementById('tab-patient');
-            const tabDoctor = document.getElementById('tab-doctor');
-            const doctorFields = document.getElementById('doctor-fields');
-            const licenseInput = document.getElementById('license');
-            const submitBtn = document.getElementById('submit-btn');
+
+            // Tabs
+            document.querySelectorAll('.role-tab').forEach(t => t.classList.remove('active'));
+            document.getElementById('tab-' + role).classList.add('active');
+
+            // Fields visibility
+            document.getElementById('doctor-fields').classList.toggle('visible', role === 'doctor');
+            document.getElementById('ambulance-fields').classList.toggle('visible', role === 'ambulance');
+            document.getElementById('license')[role === 'doctor' ? 'setAttribute' : 'removeAttribute']('required', 'true');
+            document.getElementById('fleet-id')[role === 'ambulance' ? 'setAttribute' : 'removeAttribute']('required', 'true');
+
+            // Theme
+            container.style.setProperty('--active-accent', r.accent);
+            container.style.setProperty('--active-gradient', r.gradient);
+            container.style.setProperty('--focus-ring', r.focus);
+            container.style.setProperty('--btn-shadow', r.shadow);
+
+            // Badge
             const badge = document.getElementById('role-badge');
-            const badgeText = document.getElementById('role-badge-text');
-            const title = document.getElementById('auth-title');
-            const subtitle = document.getElementById('auth-subtitle');
-            const errorMsg = document.getElementById('error-message');
+            badge.className = 'role-badge ' + r.badgeClass;
+            document.getElementById('role-badge-text').textContent = r.badgeText;
+            badge.querySelector('svg').innerHTML = r.svgIcon;
 
-            errorMsg.style.display = 'none';
-
-            if (role === 'doctor') {
-                tabDoctor.classList.add('active');
-                tabPatient.classList.remove('active');
-                doctorFields.classList.add('visible');
-                licenseInput.setAttribute('required', 'true');
-                submitBtn.innerText = 'Sign In as Doctor';
-
-                // Update theme colors
-                container.style.setProperty('--active-accent', '#4f46e5');
-                container.style.setProperty('--active-gradient', 'linear-gradient(135deg, #4f46e5, #7c3aed)');
-                container.style.setProperty('--focus-ring', 'rgba(79, 70, 229, 0.15)');
-                container.style.setProperty('--btn-shadow', 'rgba(79, 70, 229, 0.3)');
-
-                // Badge
-                badge.className = 'role-badge doctor';
-                badgeText.textContent = 'Doctor Login';
-                badge.querySelector('svg').innerHTML = '<path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3"/><path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4"/><circle cx="20" cy="10" r="2"/>';
-
-                // Text
-                title.innerText = 'Doctor Portal';
-                subtitle.innerText = 'Sign in to access patient records, consultations, and emergency alerts.';
-            } else {
-                tabPatient.classList.add('active');
-                tabDoctor.classList.remove('active');
-                doctorFields.classList.remove('visible');
-                licenseInput.removeAttribute('required');
-                submitBtn.innerText = 'Sign In';
-
-                // Reset theme
-                container.style.setProperty('--active-accent', 'var(--teal)');
-                container.style.setProperty('--active-gradient', 'var(--grad-brand)');
-                container.style.setProperty('--focus-ring', 'rgba(39, 174, 96, 0.1)');
-                container.style.setProperty('--btn-shadow', 'rgba(39, 174, 96, 0.25)');
-
-                // Badge
-                badge.className = 'role-badge patient';
-                badgeText.textContent = 'Patient Login';
-                badge.querySelector('svg').innerHTML = '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>';
-
-                // Text
-                title.innerText = 'Welcome Back';
-                subtitle.innerText = 'Sign in to your EmergiX account to manage emergencies and view real-time tracking.';
-            }
+            // Text
+            document.getElementById('auth-title').innerText = r.title;
+            document.getElementById('auth-subtitle').innerText = r.subtitle;
+            document.getElementById('submit-btn').innerText = r.btnText;
+            document.getElementById('error-message').style.display = 'none';
         }
 
         document.getElementById('signin-form').addEventListener('submit', async (e) => {
@@ -363,40 +387,46 @@
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             const license = document.getElementById('license').value;
+            const fleetId = document.getElementById('fleet-id').value;
             const button = document.getElementById('submit-btn');
             const errorMessage = document.getElementById('error-message');
+            const r = ROLES[currentRole];
 
-            // Reset state
             errorMessage.style.display = 'none';
             button.innerText = 'Signing in...';
             button.disabled = true;
             button.style.opacity = '0.7';
 
-            // Doctor validation
+            // Validation
             if (currentRole === 'doctor' && !license.trim()) {
                 errorMessage.innerText = 'Please enter your Medical License Number.';
                 errorMessage.style.display = 'block';
-                button.innerText = 'Sign In as Doctor';
-                button.disabled = false;
-                button.style.opacity = '1';
+                button.innerText = r.btnText; button.disabled = false; button.style.opacity = '1';
+                return;
+            }
+            if (currentRole === 'ambulance' && !fleetId.trim()) {
+                errorMessage.innerText = 'Please enter your Fleet Registration ID.';
+                errorMessage.style.display = 'block';
+                button.innerText = r.btnText; button.disabled = false; button.style.opacity = '1';
                 return;
             }
 
             try {
-                const endpoint = currentRole === 'doctor'
-                    ? 'http://localhost:3000/api/auth/doctor/signin'
-                    : 'http://localhost:3000/api/auth/signin';
-
-                const payload = currentRole === 'doctor'
-                    ? { email, password, licenseNo: license }
-                    : { email, password };
+                let endpoint = 'http://localhost:3000/api/auth/signin';
+                let payload = { email, password };
+                if (currentRole === 'doctor') {
+                    endpoint = 'http://localhost:3000/api/auth/doctor/signin';
+                    payload.licenseNo = license;
+                } else if (currentRole === 'ambulance') {
+                    endpoint = 'http://localhost:3000/api/auth/ambulance/signin';
+                    payload.fleetId = fleetId;
+                }
 
                 const response = await fetch(endpoint, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-
                 const data = await response.json();
 
                 if (response.ok) {
@@ -404,28 +434,21 @@
                     localStorage.setItem('userEmail', data.user.email);
                     localStorage.setItem('userRole', data.user.role || 'patient');
                     if (data.user.name) localStorage.setItem('userName', data.user.name);
+                    if (data.user.fleetId) localStorage.setItem('ambulanceFleetId', data.user.fleetId);
 
-                    const successColor = currentRole === 'doctor' ? '#4f46e5' : '#27ae60';
-                    button.style.background = successColor;
+                    button.style.background = r.successColor;
                     button.innerText = 'Success!';
-
-                    setTimeout(() => {
-                        window.location.href = currentRole === 'doctor' ? 'doctor-dashboard.html' : 'index.html';
-                    }, 800);
+                    setTimeout(() => { window.location.href = r.redirect; }, 800);
                 } else {
                     errorMessage.innerText = data.error || 'Failed to sign in. Please try again.';
                     errorMessage.style.display = 'block';
-                    button.innerText = currentRole === 'doctor' ? 'Sign In as Doctor' : 'Sign In';
-                    button.disabled = false;
-                    button.style.opacity = '1';
+                    button.innerText = r.btnText; button.disabled = false; button.style.opacity = '1';
                 }
             } catch (err) {
                 console.error(err);
                 errorMessage.innerText = 'Network error. Please make sure the backend server is running.';
                 errorMessage.style.display = 'block';
-                button.innerText = currentRole === 'doctor' ? 'Sign In as Doctor' : 'Sign In';
-                button.disabled = false;
-                button.style.opacity = '1';
+                button.innerText = r.btnText; button.disabled = false; button.style.opacity = '1';
             }
         });
     </script>

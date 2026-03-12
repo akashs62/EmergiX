@@ -204,6 +204,11 @@
             color: #4f46e5;
         }
 
+        .role-badge.ambulance {
+            background: rgba(234, 88, 12, 0.1);
+            color: #ea580c;
+        }
+
         .role-badge svg {
             width: 14px;
             height: 14px;
@@ -253,6 +258,18 @@
                 </svg>
                 Doctor
             </button>
+            <button class="role-tab" id="tab-ambulance" type="button" onclick="switchRole('ambulance')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <path d="M10 10H6" />
+                    <path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2" />
+                    <path
+                        d="M19 18h2a1 1 0 0 0 1-1v-3.28a1 1 0 0 0-.684-.948l-1.923-.641a1 1 0 0 1-.578-.502l-1.539-3.076A1 1 0 0 0 16.382 8H14" />
+                    <circle cx="17" cy="18" r="2" />
+                    <circle cx="7" cy="18" r="2" />
+                </svg>
+                Ambulance
+            </button>
         </div>
 
         <form id="auth-form">
@@ -299,6 +316,18 @@
                 </div>
             </div>
 
+            <!-- Ambulance Provider fields -->
+            <div class="doctor-fields" id="ambulance-fields">
+                <div class="form-group">
+                    <label for="fleet-name" class="form-label">Fleet / Company Name</label>
+                    <input type="text" id="fleet-name" class="form-input" placeholder="e.g. CityMed Ambulance Services">
+                </div>
+                <div class="form-group">
+                    <label for="fleet-id" class="form-label">Fleet Registration ID</label>
+                    <input type="text" id="fleet-id" class="form-input" placeholder="e.g. FLT-98765">
+                </div>
+            </div>
+
             <button type="submit" id="submit-btn" class="auth-btn">Create Account</button>
         </form>
 
@@ -313,56 +342,49 @@
         function switchRole(role) {
             currentRole = role;
             const container = document.querySelector('.auth-container');
-            const tabPatient = document.getElementById('tab-patient');
-            const tabDoctor = document.getElementById('tab-doctor');
-            const doctorFields = document.getElementById('doctor-fields');
-            const licenseInput = document.getElementById('license');
-            const specInput = document.getElementById('specialization');
-            const submitBtn = document.getElementById('submit-btn');
-            const badge = document.getElementById('role-badge');
-            const badgeText = document.getElementById('role-badge-text');
-            const title = document.getElementById('auth-title');
-            const subtitle = document.getElementById('auth-subtitle');
-            const errorMsg = document.getElementById('error-message');
 
+            // Tabs
+            document.querySelectorAll('.role-tab').forEach(t => t.classList.remove('active'));
+            document.getElementById('tab-' + role).classList.add('active');
+
+            // Fields
+            document.getElementById('doctor-fields').classList.toggle('visible', role === 'doctor');
+            document.getElementById('ambulance-fields').classList.toggle('visible', role === 'ambulance');
+
+            const badge = document.getElementById('role-badge');
+            const errorMsg = document.getElementById('error-message');
             errorMsg.style.display = 'none';
 
             if (role === 'doctor') {
-                tabDoctor.classList.add('active');
-                tabPatient.classList.remove('active');
-                doctorFields.classList.add('visible');
-                licenseInput.setAttribute('required', 'true');
-                specInput.setAttribute('required', 'true');
-                submitBtn.innerText = 'Create Doctor Account';
-
                 container.style.setProperty('--active-accent', '#4f46e5');
                 container.style.setProperty('--active-gradient', 'linear-gradient(135deg, #4f46e5, #7c3aed)');
                 container.style.setProperty('--focus-ring', 'rgba(79, 70, 229, 0.15)');
                 container.style.setProperty('--btn-shadow', 'rgba(79, 70, 229, 0.3)');
-
                 badge.className = 'role-badge doctor';
-                badgeText.textContent = 'Doctor Sign-Up';
-
-                title.innerText = 'Doctor Registration';
-                subtitle.innerText = 'Register as a medical professional to access the EmergiX Doctor Portal.';
+                document.getElementById('role-badge-text').textContent = 'Doctor Sign-Up';
+                document.getElementById('auth-title').innerText = 'Doctor Registration';
+                document.getElementById('auth-subtitle').innerText = 'Register as a medical professional to access the EmergiX Doctor Portal.';
+                document.getElementById('submit-btn').innerText = 'Create Doctor Account';
+            } else if (role === 'ambulance') {
+                container.style.setProperty('--active-accent', '#ea580c');
+                container.style.setProperty('--active-gradient', 'linear-gradient(135deg, #ea580c, #f97316)');
+                container.style.setProperty('--focus-ring', 'rgba(234, 88, 12, 0.15)');
+                container.style.setProperty('--btn-shadow', 'rgba(234, 88, 12, 0.3)');
+                badge.className = 'role-badge ambulance';
+                document.getElementById('role-badge-text').textContent = 'Ambulance Sign-Up';
+                document.getElementById('auth-title').innerText = 'Ambulance Provider';
+                document.getElementById('auth-subtitle').innerText = 'Register your fleet to manage dispatch and real-time ambulance tracking.';
+                document.getElementById('submit-btn').innerText = 'Create Provider Account';
             } else {
-                tabPatient.classList.add('active');
-                tabDoctor.classList.remove('active');
-                doctorFields.classList.remove('visible');
-                licenseInput.removeAttribute('required');
-                specInput.removeAttribute('required');
-                submitBtn.innerText = 'Create Account';
-
                 container.style.setProperty('--active-accent', 'var(--teal)');
                 container.style.setProperty('--active-gradient', 'var(--grad-brand)');
                 container.style.setProperty('--focus-ring', 'rgba(39, 174, 96, 0.1)');
                 container.style.setProperty('--btn-shadow', 'rgba(39, 174, 96, 0.25)');
-
                 badge.className = 'role-badge patient';
-                badgeText.textContent = 'Patient Sign-Up';
-
-                title.innerText = 'Create Account';
-                subtitle.innerText = 'Join EmergiX to fast-track emergency dispatch and save lives.';
+                document.getElementById('role-badge-text').textContent = 'Patient Sign-Up';
+                document.getElementById('auth-title').innerText = 'Create Account';
+                document.getElementById('auth-subtitle').innerText = 'Join EmergiX to fast-track emergency dispatch and save lives.';
+                document.getElementById('submit-btn').innerText = 'Create Account';
             }
         }
 
@@ -383,15 +405,9 @@
                 if (currentRole === 'doctor') {
                     const license = document.getElementById('license').value;
                     const specialization = document.getElementById('specialization').value;
+                    if (!license.trim()) throw new Error('Please enter your Medical License Number.');
+                    if (!specialization) throw new Error('Please select your specialization.');
 
-                    if (!license.trim()) {
-                        throw new Error('Please enter your Medical License Number.');
-                    }
-                    if (!specialization) {
-                        throw new Error('Please select your specialization.');
-                    }
-
-                    // Mock doctor registration
                     setTimeout(() => {
                         localStorage.setItem('token', 'mock-doctor-token-' + Date.now());
                         localStorage.setItem('userEmail', email);
@@ -399,19 +415,33 @@
                         localStorage.setItem('userRole', 'doctor');
                         localStorage.setItem('doctorSpecialization', specialization);
                         localStorage.setItem('doctorLicense', license);
-
                         button.style.background = '#4f46e5';
                         button.innerText = 'Doctor Account Created!';
                         setTimeout(() => window.location.href = 'doctor-dashboard.html', 800);
                     }, 1000);
+                } else if (currentRole === 'ambulance') {
+                    const fleetName = document.getElementById('fleet-name').value;
+                    const fleetId = document.getElementById('fleet-id').value;
+                    if (!fleetName.trim()) throw new Error('Please enter your Fleet / Company Name.');
+                    if (!fleetId.trim()) throw new Error('Please enter your Fleet Registration ID.');
+
+                    setTimeout(() => {
+                        localStorage.setItem('token', 'mock-ambulance-token-' + Date.now());
+                        localStorage.setItem('userEmail', email);
+                        localStorage.setItem('userName', name);
+                        localStorage.setItem('userRole', 'ambulance');
+                        localStorage.setItem('ambulanceFleetName', fleetName);
+                        localStorage.setItem('ambulanceFleetId', fleetId);
+                        button.style.background = '#ea580c';
+                        button.innerText = 'Provider Account Created!';
+                        setTimeout(() => window.location.href = 'ambulance-dashboard.html', 800);
+                    }, 1000);
                 } else {
-                    // Mock patient registration
                     setTimeout(() => {
                         localStorage.setItem('token', 'mock-new-user-token');
                         localStorage.setItem('userEmail', email);
                         localStorage.setItem('userName', name);
                         localStorage.setItem('userRole', 'patient');
-
                         button.style.background = '#27ae60';
                         button.innerText = 'Account Created!';
                         setTimeout(() => window.location.href = 'index.html', 800);
@@ -420,7 +450,8 @@
             } catch (err) {
                 errorMessage.innerText = err.message;
                 errorMessage.style.display = 'block';
-                button.innerText = currentRole === 'doctor' ? 'Create Doctor Account' : 'Create Account';
+                const btnTexts = { patient: 'Create Account', doctor: 'Create Doctor Account', ambulance: 'Create Provider Account' };
+                button.innerText = btnTexts[currentRole];
                 button.disabled = false;
                 button.style.opacity = '1';
             }

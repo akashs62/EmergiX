@@ -64,6 +64,31 @@ app.post('/api/auth/doctor/signin', (req, res) => {
     });
 });
 
+// Mock Authentication - Ambulance Provider Sign In
+app.post('/api/auth/ambulance/signin', (req, res) => {
+    const { email, password, fleetId } = req.body;
+
+    if (!email || !password) {
+        return res.status(400).json({ error: 'Email and password are required' });
+    }
+
+    if (!fleetId || !fleetId.trim()) {
+        return res.status(400).json({ error: 'Fleet Registration ID is required for ambulance provider login' });
+    }
+
+    res.status(200).json({
+        status: 'success',
+        token: 'mock-ambulance-jwt-token-' + Date.now(),
+        user: {
+            email,
+            role: 'ambulance',
+            name: email.split('@')[0],
+            fleetId,
+            fleetName: 'EmergiX Fleet Services'
+        }
+    });
+});
+
 // Mock Booking Endpoint
 app.post('/api/bookings', (req, res) => {
     const bookingDetails = req.body;
