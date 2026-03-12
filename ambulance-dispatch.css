@@ -342,3 +342,137 @@
         box-shadow: 0 0 0 0 rgba(46, 196, 182, 0);
     }
 }
+
+/* ── Driver Info Card ── */
+.ad-driver-card {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+    text-align: left;
+}
+
+.ad-driver-card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.ad-driver-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #2EC4B6, #22C55E);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: #fff;
+    flex-shrink: 0;
+}
+
+.ad-call-driver-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 18px;
+    background: #22C55E;
+    color: #fff;
+    border: none;
+    border-radius: 24px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.25s ease;
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5);
+    animation: callPulse 2s infinite;
+    flex-shrink: 0;
+}
+
+.ad-call-driver-btn:hover {
+    background: #16A34A;
+    transform: scale(1.05);
+}
+
+.ad-call-icon {
+    font-size: 1rem;
+}
+
+@keyframes callPulse {
+    0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5); }
+    70% { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+}
+
+/* ── Cancel Booking Button (outline) ── */
+.ad-btn-cancel-outline {
+    background: transparent;
+    color: #ef4444;
+    border: 1.5px solid rgba(239, 68, 68, 0.4);
+    margin-top: 0.75rem;
+}
+
+.ad-btn-cancel-outline:hover {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: #ef4444;
+}
+
+/* ── Cancel Reasons MCQ ── */
+.ad-cancel-reasons {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.ad-cancel-option {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+    border: 2px solid #E2E8F0;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.95rem;
+    color: #475569;
+    background: #fff;
+}
+
+.ad-cancel-option:hover {
+    border-color: #DC2626;
+    background: #FEF2F2;
+}
+
+.ad-cancel-option.selected {
+    border-color: #DC2626;
+    background: #FEF2F2;
+    color: #1E293B;
+    font-weight: 500;
+}
+
+.ad-cancel-radio {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid #CBD5E1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: border-color 0.2s;
+}
+
+.ad-cancel-radio.checked {
+    border-color: #DC2626;
+}
+
+.ad-cancel-radio-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #DC2626;
+}

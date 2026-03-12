@@ -448,21 +448,72 @@ function saveNewAmbulance() {
 }
 
 // ── Dispatches View ──
-function renderDispatches(filter = '') {
+let dispatchFilters = { text: '', priority: '', status: '', hospital: '', ambType: '' };
+
+function renderDispatches() {
     const panel = document.getElementById('view-dispatches');
-    const filtered = filter
-        ? DB.dispatches.filter(d => d.patient.toLowerCase().includes(filter.toLowerCase()) || d.id.toLowerCase().includes(filter.toLowerCase()) || d.pickup.toLowerCase().includes(filter.toLowerCase()))
-        : DB.dispatches;
+
+    // Gather unique values for filters
+    const hospitals = [...new Set(DB.dispatches.map(d => d.hospital))].sort();
+    const ambTypes = [...new Set(DB.ambulances.map(a => a.type))].sort();
+
+    // Apply all filters
+    let filtered = DB.dispatches;
+    if (dispatchFilters.text) {
+        const q = dispatchFilters.text.toLowerCase();
+        filtered = filtered.filter(d => d.patient.toLowerCase().includes(q) || d.id.toLowerCase().includes(q) || d.pickup.toLowerCase().includes(q));
+    }
+    if (dispatchFilters.priority) filtered = filtered.filter(d => d.priority === dispatchFilters.priority);
+    if (dispatchFilters.status) filtered = filtered.filter(d => d.status === dispatchFilters.status);
+    if (dispatchFilters.hospital) filtered = filtered.filter(d => d.hospital === dispatchFilters.hospital);
+    if (dispatchFilters.ambType) {
+        filtered = filtered.filter(d => {
+            if (!d.ambulanceId) return false;
+            const amb = DB.ambulances.find(a => a.id === d.ambulanceId);
+            return amb && amb.type === dispatchFilters.ambType;
+        });
+    }
+
+    const activeFilterCount = [dispatchFilters.priority, dispatchFilters.status, dispatchFilters.hospital, dispatchFilters.ambType].filter(Boolean).length;
 
     panel.innerHTML = `
         <h2 style="font-family:'Poppins',sans-serif;font-size:22px;font-weight:700;margin-bottom:20px;">Dispatch Management</h2>
-        <div style="display:flex;gap:12px;margin-bottom:24px;">
-            <input type="text" id="dispatch-search" placeholder="Search by ID, patient, or location..." value="${filter}" oninput="renderDispatches(this.value)"
+        <div style="display:flex;gap:12px;margin-bottom:12px;">
+            <input type="text" id="dispatch-search" placeholder="Search by ID, patient, or location..." value="${dispatchFilters.text}" oninput="dispatchFilters.text=this.value;renderDispatches()"
                 style="flex:1;padding:10px 16px;border:1px solid #e2e8f0;border-radius:10px;font-size:14px;font-family:'Inter',sans-serif;">
             <button onclick="newDispatchPrompt()" style="padding:10px 20px;border:none;border-radius:10px;background:linear-gradient(135deg,#ea580c,#f97316);color:#fff;font-weight:600;cursor:pointer;font-size:14px;">+ New Dispatch</button>
         </div>
+        <div style="display:flex;gap:10px;margin-bottom:24px;flex-wrap:wrap;align-items:center;">
+            <select onchange="dispatchFilters.priority=this.value;renderDispatches()" style="padding:8px 14px;border:1px solid ${dispatchFilters.priority ? '#ea580c' : '#e2e8f0'};border-radius:8px;font-size:13px;font-family:'Inter',sans-serif;background:${dispatchFilters.priority ? '#fff7ed' : '#fff'};color:${dispatchFilters.priority ? '#ea580c' : '#475569'};font-weight:${dispatchFilters.priority ? '600' : '400'};cursor:pointer;">
+                <option value="">All Priorities</option>
+                <option value="critical" ${dispatchFilters.priority === 'critical' ? 'selected' : ''}>Critical</option>
+                <option value="high" ${dispatchFilters.priority === 'high' ? 'selected' : ''}>High</option>
+                <option value="medium" ${dispatchFilters.priority === 'medium' ? 'selected' : ''}>Medium</option>
+                <option value="low" ${dispatchFilters.priority === 'low' ? 'selected' : ''}>Low</option>
+            </select>
+            <select onchange="dispatchFilters.status=this.value;renderDispatches()" style="padding:8px 14px;border:1px solid ${dispatchFilters.status ? '#ea580c' : '#e2e8f0'};border-radius:8px;font-size:13px;font-family:'Inter',sans-serif;background:${dispatchFilters.status ? '#fff7ed' : '#fff'};color:${dispatchFilters.status ? '#ea580c' : '#475569'};font-weight:${dispatchFilters.status ? '600' : '400'};cursor:pointer;">
+                <option value="">All Statuses</option>
+                <option value="pending" ${dispatchFilters.status === 'pending' ? 'selected' : ''}>Pending</option>
+                <option value="en-route" ${dispatchFilters.status === 'en-route' ? 'selected' : ''}>En Route</option>
+                <option value="on-scene" ${dispatchFilters.status === 'on-scene' ? 'selected' : ''}>On Scene</option>
+                <option value="completed" ${dispatchFilters.status === 'completed' ? 'selected' : ''}>Completed</option>
+                <option value="returning" ${dispatchFilters.status === 'returning' ? 'selected' : ''}>Returning</option>
+                <option value="cancelled" ${dispatchFilters.status === 'cancelled' ? 'selected' : ''}>Cancelled</option>
+            </select>
+            <select onchange="dispatchFilters.hospital=this.value;renderDispatches()" style="padding:8px 14px;border:1px solid ${dispatchFilters.hospital ? '#ea580c' : '#e2e8f0'};border-radius:8px;font-size:13px;font-family:'Inter',sans-serif;background:${dispatchFilters.hospital ? '#fff7ed' : '#fff'};color:${dispatchFilters.hospital ? '#ea580c' : '#475569'};font-weight:${dispatchFilters.hospital ? '600' : '400'};cursor:pointer;">
+                <option value="">All Hospitals</option>
+                ${hospitals.map(h => `<option value="${h}" ${dispatchFilters.hospital === h ? 'selected' : ''}>${h}</option>`).join('')}
+            </select>
+            <select onchange="dispatchFilters.ambType=this.value;renderDispatches()" style="padding:8px 14px;border:1px solid ${dispatchFilters.ambType ? '#ea580c' : '#e2e8f0'};border-radius:8px;font-size:13px;font-family:'Inter',sans-serif;background:${dispatchFilters.ambType ? '#fff7ed' : '#fff'};color:${dispatchFilters.ambType ? '#ea580c' : '#475569'};font-weight:${dispatchFilters.ambType ? '600' : '400'};cursor:pointer;">
+                <option value="">All Ambulance Types</option>
+                ${ambTypes.map(t => `<option value="${t}" ${dispatchFilters.ambType === t ? 'selected' : ''}>${t}</option>`).join('')}
+            </select>
+            ${activeFilterCount > 0 ? `<button onclick="dispatchFilters={text:dispatchFilters.text,priority:'',status:'',hospital:'',ambType:''};renderDispatches()" style="padding:8px 14px;border:1px solid #ef4444;border-radius:8px;font-size:12px;font-weight:600;color:#ef4444;background:#fff;cursor:pointer;">✕ Clear Filters (${activeFilterCount})</button>` : ''}
+        </div>
         <div style="display:flex;flex-direction:column;gap:12px;">
-            ${filtered.map(d => `
+            ${filtered.map(d => {
+                const amb = d.ambulanceId ? DB.ambulances.find(a => a.id === d.ambulanceId) : null;
+                return `
                 <div style="background:#fff;border-radius:12px;border:1px solid #e2e8f0;padding:20px;transition:box-shadow 0.2s;cursor:pointer;" onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,0.06)'" onmouseout="this.style.boxShadow='none'" onclick="viewDispatch('${d.id}')">
                     <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px;">
                         <div><span style="font-weight:700;font-size:15px;">${d.id}</span><span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:${d.priority === 'critical' ? 'rgba(239,68,68,0.1)' : d.priority === 'high' ? 'rgba(245,158,11,0.1)' : d.priority === 'medium' ? 'rgba(59,130,246,0.1)' : 'rgba(16,185,129,0.1)'};color:${d.priority === 'critical' ? '#ef4444' : d.priority === 'high' ? '#f59e0b' : d.priority === 'medium' ? '#3b82f6' : '#10b981'};margin-left:10px;">${d.priority.toUpperCase()}</span></div>
@@ -471,6 +522,9 @@ function renderDispatches(filter = '') {
                     <div style="display:flex;justify-content:space-between;align-items:center;">
                         <div>
                             <div style="font-size:14px;font-weight:600;color:#1e293b;">${d.patient}</div>
+                            ${amb
+                                ? `<div style="font-size:12px;color:#ea580c;font-weight:600;margin-top:3px;">🚑 ${amb.id} · ${amb.plate} <span style="font-weight:500;color:#64748b;">— ${amb.type}</span></div>`
+                                : `<div style="font-size:12px;color:#94a3b8;margin-top:3px;">🚑 No ambulance assigned</div>`}
                             <div style="font-size:13px;color:#64748b;margin-top:2px;">📍 ${d.pickup} → 🏨 ${d.hospital}</div>
                         </div>
                         <div style="text-align:right;">
@@ -478,8 +532,9 @@ function renderDispatches(filter = '') {
                             ${d.eta !== '—' ? `<div style="font-size:12px;font-weight:600;color:#ea580c;">ETA: ${d.eta}</div>` : ''}
                         </div>
                     </div>
-                </div>`).join('')}
-            ${filtered.length === 0 ? '<div style="padding:40px;text-align:center;color:#94a3b8;">No dispatches found.</div>' : ''}
+                </div>`;
+            }).join('')}
+            ${filtered.length === 0 ? '<div style="padding:40px;text-align:center;color:#94a3b8;">No dispatches match your filters.</div>' : ''}
         </div>`;
 }
 

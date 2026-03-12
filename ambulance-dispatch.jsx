@@ -193,8 +193,76 @@ const SeverityResult = ({ result, onProceed }) => {
     );
 };
 
-const TrackingScreen = ({ bookingData, onHome }) => {
+// ── Cancel Booking Component ──
+const CANCEL_REASONS = [
+    { id: 'not_needed', label: 'Ambulance is no longer needed' },
+    { id: 'alternate', label: 'Found alternate transport (cab, personal vehicle)' },
+    { id: 'mistake', label: 'Booked by mistake' }
+];
+
+const CancelBooking = ({ bookingData, onBack, onConfirmCancel }) => {
+    const [selectedReason, setSelectedReason] = useState(null);
+    const [confirming, setConfirming] = useState(false);
+
+    const handleCancel = () => {
+        if (!selectedReason) return;
+        setConfirming(true);
+        setTimeout(() => {
+            onConfirmCancel(selectedReason);
+        }, 1200);
+    };
+
+    return (
+        <div className="ad-modal-wrap">
+            <div className="ad-modal-header" style={{ background: '#DC2626' }}>
+                <div>
+                    <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Cancel Booking</h2>
+                    <span style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)' }}>{bookingData.id}</span>
+                </div>
+                <button className="ad-back-btn" onClick={onBack}>✕ Back</button>
+            </div>
+            <div className="ad-modal-body">
+                <p style={{ fontSize: '1rem', fontWeight: 600, color: '#1E293B', marginBottom: '0.5rem' }}>Why are you cancelling this booking?</p>
+                <p style={{ fontSize: '0.85rem', color: '#64748B', marginBottom: '1.5rem' }}>Please select a reason to help us improve our services.</p>
+
+                <div className="ad-cancel-reasons">
+                    {CANCEL_REASONS.map(r => (
+                        <label key={r.id} className={`ad-cancel-option ${selectedReason === r.id ? 'selected' : ''}`}
+                            onClick={() => setSelectedReason(r.id)}>
+                            <div className={`ad-cancel-radio ${selectedReason === r.id ? 'checked' : ''}`}>
+                                {selectedReason === r.id && <div className="ad-cancel-radio-dot"></div>}
+                            </div>
+                            <span>{r.label}</span>
+                        </label>
+                    ))}
+                </div>
+
+                <button
+                    className={`ad-btn ${selectedReason ? 'ad-btn-danger' : ''}`}
+                    style={!selectedReason ? { background: '#E2E8F0', color: '#94A3B8', cursor: 'not-allowed' } : {}}
+                    disabled={!selectedReason || confirming}
+                    onClick={handleCancel}>
+                    {confirming ? 'Cancelling...' : 'Confirm Cancellation'}
+                </button>
+                <button className="ad-btn ad-btn-secondary" style={{ marginTop: '0.75rem' }} onClick={onBack}>
+                    Go Back — Keep My Booking
+                </button>
+            </div>
+        </div>
+    );
+};
+
+const TrackingScreen = ({ bookingData, onHome, onCancel }) => {
     const [showMap, setShowMap] = useState(false);
+
+    // Mock driver data attached to the booking
+    const driverInfo = {
+        name: 'Sunil Yadav',
+        phone: '+919876511111',
+        phoneDisplay: '+91 98765 11111',
+        rating: 4.8,
+        experience: '6 years'
+    };
 
     useEffect(() => {
         if (!showMap) return;
@@ -307,7 +375,7 @@ const TrackingScreen = ({ bookingData, onHome }) => {
                 <h2>Ambulance Dispatched!</h2>
                 <p style={{ color: '#94A3B8', marginBottom: '2rem' }}>Booking ID: <strong style={{ color: '#fff' }}>{bookingData.id}</strong></p>
 
-                <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '12px', padding: '1.5rem', textAlign: 'left', marginBottom: '2rem' }}>
+                <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '12px', padding: '1.5rem', textAlign: 'left', marginBottom: '1.5rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                         <span style={{ color: '#94A3B8' }}>Ambulance</span>
                         <strong>{bookingData.ambType} Unit ({bookingData.vehicleId})</strong>
@@ -322,8 +390,30 @@ const TrackingScreen = ({ bookingData, onHome }) => {
                     </div>
                 </div>
 
+                {/* ── Driver Info Card ── */}
+                <div className="ad-driver-card">
+                    <div className="ad-driver-card-header">
+                        <div className="ad-driver-avatar">{driverInfo.name.split(' ').map(n => n[0]).join('')}</div>
+                        <div style={{ flex: 1, textAlign: 'left' }}>
+                            <div style={{ fontWeight: 700, fontSize: '1rem', color: '#1E293B' }}>{driverInfo.name}</div>
+                            <div style={{ fontSize: '0.8rem', color: '#64748B' }}>★ {driverInfo.rating} · {driverInfo.experience}</div>
+                        </div>
+                        <a href={`tel:${driverInfo.phone}`} className="ad-call-driver-btn" title="Call Driver">
+                            <span className="ad-call-icon">📞</span>
+                            Call Driver
+                        </a>
+                    </div>
+                    <div style={{ fontSize: '0.8rem', color: '#94A3B8', marginTop: '0.5rem' }}>Driver assigned to your ambulance</div>
+                </div>
+
+                {/* ── Action Buttons ── */}
                 <button className="ad-btn ad-btn-primary" onClick={() => setShowMap(true)}>View Live Map</button>
-                <button className="ad-btn" style={{ background: 'transparent', color: '#94A3B8', marginTop: '1rem' }} onClick={onHome}>Close</button>
+
+                <button className="ad-btn ad-btn-cancel-outline" onClick={onCancel}>
+                    Cancel Booking
+                </button>
+
+                <button className="ad-btn" style={{ background: 'transparent', color: '#94A3B8', marginTop: '0.5rem' }} onClick={onHome}>Close</button>
             </div>
         </div>
     );
@@ -332,9 +422,10 @@ const TrackingScreen = ({ bookingData, onHome }) => {
 
 // Main App Component
 const AmbulanceDispatchApp = () => {
-    const [view, setView] = useState('home'); // home, direct, triage, result, tracking
+    const [view, setView] = useState('home'); // home, direct, triage, result, tracking, cancel, cancelled
     const [triageResult, setTriageResult] = useState(null);
     const [bookingRef, setBookingRef] = useState(null);
+    const [cancelReason, setCancelReason] = useState(null);
 
     const handleDirectConfirm = (data) => {
         // Mock save
@@ -349,10 +440,15 @@ const AmbulanceDispatchApp = () => {
     };
 
     const handleProceedFromTriage = (ambType) => {
-        // For simplicity, directly tracking for now. In real app, might ask for address here if not known.
         const id = 'EMR-' + Math.floor(1000 + Math.random() * 9000);
         setBookingRef({ id, ambType, vehicleId: `${ambType}-990` });
         setView('tracking');
+    };
+
+    const handleCancelConfirm = (reasonId) => {
+        const reason = CANCEL_REASONS.find(r => r.id === reasonId);
+        setCancelReason(reason ? reason.label : 'Unknown');
+        setView('cancelled');
     };
 
     return (
@@ -389,7 +485,24 @@ const AmbulanceDispatchApp = () => {
 
             {view === 'result' && <SeverityResult result={triageResult} onProceed={handleProceedFromTriage} />}
 
-            {view === 'tracking' && <TrackingScreen bookingData={bookingRef} onHome={() => setView('home')} />}
+            {view === 'tracking' && <TrackingScreen bookingData={bookingRef} onHome={() => setView('home')} onCancel={() => setView('cancel')} />}
+
+            {view === 'cancel' && <CancelBooking bookingData={bookingRef} onBack={() => setView('tracking')} onConfirmCancel={handleCancelConfirm} />}
+
+            {view === 'cancelled' && (
+                <div className="ad-modal-wrap">
+                    <div className="ad-modal-body" style={{ textAlign: 'center', padding: '3rem 2rem' }}>
+                        <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'rgba(239,68,68,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', fontSize: '2rem' }}>✕</div>
+                        <h2 style={{ color: '#1E293B', marginBottom: '0.5rem' }}>Booking Cancelled</h2>
+                        <p style={{ color: '#64748B', marginBottom: '0.5rem', fontSize: '0.95rem' }}>{bookingRef?.id} has been cancelled.</p>
+                        <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 10, padding: '1rem', marginBottom: '2rem', textAlign: 'left' }}>
+                            <div style={{ fontSize: '0.8rem', color: '#DC2626', fontWeight: 600, marginBottom: '0.25rem' }}>Reason</div>
+                            <div style={{ fontSize: '0.95rem', color: '#1E293B' }}>{cancelReason}</div>
+                        </div>
+                        <button className="ad-btn ad-btn-primary" onClick={() => { setView('home'); setBookingRef(null); setCancelReason(null); }}>Back to Home</button>
+                    </div>
+                </div>
+            )}
 
         </div>
     );
