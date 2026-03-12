@@ -804,6 +804,14 @@
         </svg>
     </button>
 
+    <!-- Doctor auto-redirect -->
+    <script>
+        (function () {
+            if (localStorage.getItem('userRole') === 'doctor') {
+                window.location.href = 'doctor-dashboard.html';
+            }
+        })();
+    </script>
     <script src="app.js"></script>
 </body>
 

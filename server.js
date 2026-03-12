@@ -22,21 +22,46 @@ app.get('/api/health', (req, res) => {
     res.status(200).json({ status: 'success', message: 'EmergiX backend is running!' });
 });
 
-// Mock Authentication - Sign In
+// Mock Authentication - Patient Sign In
 app.post('/api/auth/signin', (req, res) => {
     const { email, password } = req.body;
 
     // Simple mock validation
     if (email && password) {
-        // Here you would check against a real Database
         res.status(200).json({
             status: 'success',
             token: 'mock-jwt-token-7382910',
-            user: { email }
+            user: { email, role: 'patient' }
         });
     } else {
         res.status(400).json({ error: 'Email and password are required' });
     }
+});
+
+// Mock Authentication - Doctor Sign In
+app.post('/api/auth/doctor/signin', (req, res) => {
+    const { email, password, licenseNo } = req.body;
+
+    if (!email || !password) {
+        return res.status(400).json({ error: 'Email and password are required' });
+    }
+
+    if (!licenseNo || !licenseNo.trim()) {
+        return res.status(400).json({ error: 'Medical License Number is required for doctor login' });
+    }
+
+    // In a real app, verify the license against a medical registry
+    res.status(200).json({
+        status: 'success',
+        token: 'mock-doctor-jwt-token-' + Date.now(),
+        user: {
+            email,
+            role: 'doctor',
+            name: 'Dr. ' + email.split('@')[0],
+            licenseNo,
+            specialization: 'Emergency Medicine'
+        }
+    });
 });
 
 // Mock Booking Endpoint
