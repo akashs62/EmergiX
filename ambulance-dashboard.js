@@ -15,14 +15,14 @@ const DB = {
         { id: 'AMB-008', plate: 'UP-14-OP-1122', type: 'Basic Life Support', status: 'active', driverId: 'D006', location: 'Vaishali, Ghaziabad', lastPing: '1 min ago' }
     ],
     dispatches: [
-        { id: 'DSP-4021', ambulanceId: 'AMB-002', patient: 'Ravi Verma', pickup: '23, MG Road, CP, Delhi', hospital: 'Max Hospital, Saket', priority: 'critical', status: 'en-route', eta: '4 min', time: '1:45 PM' },
-        { id: 'DSP-4022', ambulanceId: 'AMB-005', patient: 'Sunita Rao', pickup: '14-B, Lajpat Nagar II', hospital: 'Apollo Hospital, Jasola', priority: 'high', status: 'en-route', eta: '7 min', time: '1:38 PM' },
-        { id: 'DSP-4023', ambulanceId: null, patient: 'Mohit Arora', pickup: '56, Sector 62, Noida', hospital: 'Fortis Hospital, Noida', priority: 'medium', status: 'pending', eta: '—', time: '1:52 PM' },
-        { id: 'DSP-4024', ambulanceId: null, patient: 'Anita Sharma', pickup: '12, Greater Kailash I', hospital: 'AIIMS, Delhi', priority: 'critical', status: 'pending', eta: '—', time: '1:55 PM' },
-        { id: 'DSP-4025', ambulanceId: 'AMB-001', patient: 'Karan Singh', pickup: '78, Rajouri Garden', hospital: 'BLK Max, Rajinder Nagar', priority: 'high', status: 'on-scene', eta: '—', time: '1:20 PM' },
-        { id: 'DSP-4026', ambulanceId: 'AMB-003', patient: 'Priya Mehra', pickup: 'Dwarka Sec 7', hospital: 'Manipal Hospital, Dwarka', priority: 'medium', status: 'completed', eta: '—', time: '12:30 PM' },
-        { id: 'DSP-4027', ambulanceId: 'AMB-007', patient: 'Baby Gupta (Neonate)', pickup: 'Safdarjung Hospital', hospital: 'AIIMS NICU', priority: 'critical', status: 'completed', eta: '—', time: '11:15 AM' },
-        { id: 'DSP-4028', ambulanceId: 'AMB-008', patient: 'Rajesh Kumar', pickup: 'Vaishali Sec 4, Ghaziabad', hospital: 'Yatharth Hospital', priority: 'low', status: 'returning', eta: '—', time: '12:50 PM' }
+        { id: 'DSP-4021', ambulanceId: 'AMB-002', patient: 'Ravi Verma', phone: '+91 98111 20001', pickup: '23, MG Road, CP, Delhi', hospital: 'Max Hospital, Saket', priority: 'critical', status: 'en-route', eta: '4 min', time: '1:45 PM' },
+        { id: 'DSP-4022', ambulanceId: 'AMB-005', patient: 'Sunita Rao', phone: '+91 98111 20002', pickup: '14-B, Lajpat Nagar II', hospital: 'Apollo Hospital, Jasola', priority: 'high', status: 'en-route', eta: '7 min', time: '1:38 PM' },
+        { id: 'DSP-4023', ambulanceId: null, patient: 'Mohit Arora', phone: '+91 98111 20003', pickup: '56, Sector 62, Noida', hospital: 'Fortis Hospital, Noida', priority: 'medium', status: 'pending', eta: '—', time: '1:52 PM' },
+        { id: 'DSP-4024', ambulanceId: null, patient: 'Anita Sharma', phone: '+91 98111 20004', pickup: '12, Greater Kailash I', hospital: 'AIIMS, Delhi', priority: 'critical', status: 'pending', eta: '—', time: '1:55 PM' },
+        { id: 'DSP-4025', ambulanceId: 'AMB-001', patient: 'Karan Singh', phone: '+91 98111 20005', pickup: '78, Rajouri Garden', hospital: 'BLK Max, Rajinder Nagar', priority: 'high', status: 'on-scene', eta: '—', time: '1:20 PM' },
+        { id: 'DSP-4026', ambulanceId: 'AMB-003', patient: 'Priya Mehra', phone: '+91 98111 20006', pickup: 'Dwarka Sec 7', hospital: 'Manipal Hospital, Dwarka', priority: 'medium', status: 'completed', eta: '—', time: '12:30 PM' },
+        { id: 'DSP-4027', ambulanceId: 'AMB-007', patient: 'Baby Gupta (Neonate)', phone: '+91 98111 20007', pickup: 'Safdarjung Hospital', hospital: 'AIIMS NICU', priority: 'critical', status: 'completed', eta: '—', time: '11:15 AM' },
+        { id: 'DSP-4028', ambulanceId: 'AMB-008', patient: 'Rajesh Kumar', phone: '+91 98111 20008', pickup: 'Vaishali Sec 4, Ghaziabad', hospital: 'Yatharth Hospital', priority: 'low', status: 'returning', eta: '—', time: '12:50 PM' }
     ],
     drivers: [
         { id: 'D001', name: 'Sunil Yadav', phone: '+91 98765 11111', license: 'DL-2019-0012345', status: 'on-duty', ambulanceId: 'AMB-001', experience: '6 years', rating: 4.8 },
@@ -193,7 +193,7 @@ function renderDashboard() {
                 <div class="dispatch-id-sub">${d.time}</div>
             </div>
             <div class="dispatch-info">
-                <div class="dispatch-patient">${d.patient}</div>
+                <div class="dispatch-patient">${d.patient} <span style="font-weight:500;color:#64748b;font-size:12px;">· ${d.phone}</span></div>
                 <div class="dispatch-location">📍 ${d.pickup}</div>
             </div>
             <span class="dispatch-status ${d.status}">${formatStatus(d.status)}</span>
@@ -521,7 +521,7 @@ function renderDispatches() {
                     </div>
                     <div style="display:flex;justify-content:space-between;align-items:center;">
                         <div>
-                            <div style="font-size:14px;font-weight:600;color:#1e293b;">${d.patient}</div>
+                            <div style="font-size:14px;font-weight:600;color:#1e293b;">${d.patient} <span style="font-weight:500;color:#64748b;font-size:12px;">· ${d.phone}</span></div>
                             ${amb
                                 ? `<div style="font-size:12px;color:#ea580c;font-weight:600;margin-top:3px;">🚑 ${amb.id} · ${amb.plate} <span style="font-weight:500;color:#64748b;">— ${amb.type}</span></div>`
                                 : `<div style="font-size:12px;color:#94a3b8;margin-top:3px;">🚑 No ambulance assigned</div>`}
