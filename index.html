@@ -85,13 +85,6 @@
                         </svg>
                         Request Emergency
                     </button>
-                    <a href="#how-it-works" class="btn-getstarted">
-                        Get Started
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                            <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2"
-                                stroke-linecap="round" stroke-linejoin="round" />
-                        </svg>
-                    </a>
                 </div>
 
             </div>
@@ -125,7 +118,7 @@
                 <div class="hero-float-card card-lives">
                     <div class="hfc-icon green">❤️</div>
                     <div>
-                        <div class="hfc-num" id="heroLives">0</div>
+                        <div class="hfc-num" id="heroLives">12,500+</div>
                         <div class="hfc-label">Lives Saved</div>
                     </div>
                 </div>
@@ -133,7 +126,7 @@
                 <div class="hero-float-card card-response">
                     <div class="hfc-icon blue">⏱</div>
                     <div>
-                        <div class="hfc-num">0 min</div>
+                        <div class="hfc-num">8 min</div>
                         <div class="hfc-label">Avg. Response</div>
                     </div>
                 </div>
@@ -141,7 +134,7 @@
                 <div class="hero-float-card card-hosp">
                     <div class="hfc-icon teal">🏥</div>
                     <div>
-                        <div class="hfc-num">0</div>
+                        <div class="hfc-num">150+</div>
                         <div class="hfc-label">Partner Hospitals</div>
                     </div>
                 </div>
@@ -184,7 +177,7 @@
     <section class="stats-section" id="stats" aria-label="Key statistics">
         <div class="container">
             <div class="stats-grid">
-                <div class="stat-card" data-count="0" aria-label="0 Lives Saved">
+                <div class="stat-card" data-count="12500" data-suffix="+" aria-label="12,500+ Lives Saved">
                     <div class="stat-icon-wrap" style="background:linear-gradient(135deg,#FF4D4F22,#FF4D4F11);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
                             <path
@@ -195,7 +188,7 @@
                     <div class="stat-number" id="s-lives">0</div>
                     <div class="stat-label">Lives Saved</div>
                 </div>
-                <div class="stat-card" data-count="0" aria-label="0 Ambulances">
+                <div class="stat-card" data-count="500" data-suffix="+" aria-label="500+ Ambulances">
                     <div class="stat-icon-wrap" style="background:linear-gradient(135deg,#27AE6022,#27AE6011);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
                             <rect x="1" y="3" width="15" height="13" rx="2" stroke="#27AE60" stroke-width="2" />
@@ -207,7 +200,7 @@
                     <div class="stat-number" id="s-amb">0</div>
                     <div class="stat-label">Ambulances</div>
                 </div>
-                <div class="stat-card" data-count="0" aria-label="0 Partner Hospitals">
+                <div class="stat-card" data-count="150" data-suffix="+" aria-label="150+ Partner Hospitals">
                     <div class="stat-icon-wrap" style="background:linear-gradient(135deg,#2B7FFF22,#2B7FFF11);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
                             <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" stroke="#2B7FFF" stroke-width="2" />
@@ -217,7 +210,7 @@
                     <div class="stat-number" id="s-hosp">0</div>
                     <div class="stat-label">Partner Hospitals</div>
                 </div>
-                <div class="stat-card" data-count="0" aria-label="45+ Service Provider">
+                <div class="stat-card" data-count="45" data-suffix="+" aria-label="45+ Cities Served">
                     <div class="stat-icon-wrap" style="background:linear-gradient(135deg,#7C3AED22,#7C3AED11);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
                             <circle cx="12" cy="12" r="10" stroke="#7C3AED" stroke-width="2" />
@@ -226,7 +219,7 @@
                         </svg>
                     </div>
                     <div class="stat-number" id="s-cities">0</div>
-                    <div class="stat-label">Service Provider</div>
+                    <div class="stat-label">Cities Served</div>
                 </div>
             </div>
         </div>
@@ -602,7 +595,7 @@
                 btn.innerText = 'Signing in...';
                 btn.disabled = true;
                 
-                fetch('http://localhost:3000/api/auth/signin', {
+                fetch('/api/auth/signin', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email: document.getElementById('siPhone').value, password: document.getElementById('siPass').value })
@@ -610,8 +603,12 @@
                 .then(r => r.json())
                 .then(data => {
                     if(data.token) {
+                        localStorage.setItem('token', data.token);
+                        localStorage.setItem('userEmail', data.user?.email || document.getElementById('siPhone').value);
+                        localStorage.setItem('userRole', data.user?.role || 'patient');
                         closeModal('modalSignin');
                         showToast('✅ Signed in successfully! Welcome back.', 'success');
+                        setTimeout(() => window.location.reload(), 450);
                     } else {
                         showToast('❌ ' + (data.error || 'Failed to sign in'), 'error');
                     }

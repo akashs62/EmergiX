@@ -427,10 +427,40 @@ const AmbulanceDispatchApp = () => {
     const [bookingRef, setBookingRef] = useState(null);
     const [cancelReason, setCancelReason] = useState(null);
 
-    const handleDirectConfirm = (data) => {
-        // Mock save
-        const id = 'EMR-' + Math.floor(1000 + Math.random() * 9000);
-        setBookingRef({ id, ambType: data.ambType, vehicleId: `${data.ambType}-204` });
+    const createBooking = async (details) => {
+        try {
+            const response = await fetch('/api/bookings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(details)
+            });
+
+            if (!response.ok) {
+                throw new Error('Booking API failed');
+            }
+
+            const data = await response.json();
+            const bookingId = data.bookingId || ('EMR-' + Math.floor(1000 + Math.random() * 9000));
+            return { id: bookingId, ambType: details.ambType, vehicleId: `${details.ambType}-204` };
+        } catch (error) {
+            return {
+                id: 'EMR-' + Math.floor(1000 + Math.random() * 9000),
+                ambType: details.ambType,
+                vehicleId: `${details.ambType}-204`
+            };
+        }
+    };
+
+    const handleDirectConfirm = async (data) => {
+        const booking = await createBooking({
+            source: 'direct',
+            patientName: data.name,
+            contact: data.phone,
+            location: data.location,
+            emergencyType: data.type,
+            ambType: data.ambType
+        });
+        setBookingRef(booking);
         setView('tracking');
     };
 
@@ -439,9 +469,14 @@ const AmbulanceDispatchApp = () => {
         setView('result');
     };
 
-    const handleProceedFromTriage = (ambType) => {
-        const id = 'EMR-' + Math.floor(1000 + Math.random() * 9000);
-        setBookingRef({ id, ambType, vehicleId: `${ambType}-990` });
+    const handleProceedFromTriage = async (ambType) => {
+        const booking = await createBooking({
+            source: 'triage',
+            severity: triageResult?.severity,
+            reason: triageResult?.reason,
+            ambType
+        });
+        setBookingRef({ ...booking, vehicleId: `${ambType}-990` });
         setView('tracking');
     };
 
