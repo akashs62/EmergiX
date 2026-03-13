@@ -732,18 +732,24 @@ body {
 }
 
 .services-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 22px;
+    display: flex;
+    justify-content: center;
+    gap: 32px;
+    flex-wrap: wrap;
+    max-width: 900px;
+    margin: 0 auto;
 }
 
 .service-card {
-    background: #fff;
-    border-radius: var(--radius);
-    padding: 32px 28px;
-    border: 1.5px solid #EEF2F7;
-    box-shadow: var(--shadow-sm);
-    transition: all var(--transition);
+    flex: 1;
+    min-width: 320px;
+    max-width: 420px;
+    background: #ffffff;
+    border-radius: var(--radius-xl);
+    padding: 40px 32px;
+    border: 1px solid rgba(226, 232, 240, 0.7);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.04);
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     cursor: pointer;
     position: relative;
     overflow: hidden;
@@ -755,36 +761,44 @@ body {
     top: 0;
     left: 0;
     right: 0;
-    height: 3px;
-    background: var(--grad-brand);
-    transform: scaleX(0);
-    transform-origin: left;
-    transition: transform var(--transition);
+    bottom: 0;
+    background: radial-gradient(circle at top right, rgba(43, 127, 255, 0.05), transparent 60%);
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    z-index: 0;
+    pointer-events: none;
+}
+
+.service-card > * {
+    position: relative;
+    z-index: 1;
 }
 
 .service-card:hover {
-    transform: translateY(-5px);
-    box-shadow: var(--shadow-lg);
-    border-color: transparent;
+    transform: translateY(-8px);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.08);
+    border-color: rgba(43, 127, 255, 0.2);
 }
 
 .service-card:hover::before {
-    transform: scaleX(1);
+    opacity: 1;
 }
 
 .sc-icon-wrap {
-    width: 58px;
-    height: 58px;
-    border-radius: 16px;
+    width: 64px;
+    height: 64px;
+    border-radius: 18px;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 20px;
-    transition: transform var(--transition);
+    margin-bottom: 24px;
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
 }
 
 .service-card:hover .sc-icon-wrap {
-    transform: scale(1.1) rotate(-3deg);
+    transform: scale(1.08) translateY(-4px);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
 }
 
 .sc-title {
