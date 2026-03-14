@@ -24,6 +24,7 @@ const VideoConsultationPage = () => {
 
     // Call UI State
     const [callTime, setCallTime] = useState(0);
+    const availableCount = mockDoctors.filter(doc => doc.status === 'Available').length;
 
     const filteredDocs = useMemo(() => {
         let res = [...mockDoctors];
@@ -80,6 +81,20 @@ const VideoConsultationPage = () => {
             <div className="vc-header">
                 <h1 className="vc-title">Video Consultation</h1>
                 <p className="vc-subtitle">Connect face-to-face with top specialists instantly in HD.</p>
+                <div className="vc-metrics">
+                    <div className="vc-metric">
+                        <strong>{availableCount}</strong>
+                        <span>Doctors available for immediate consult</span>
+                    </div>
+                    <div className="vc-metric">
+                        <strong>12 min</strong>
+                        <span>Median handoff from booking to consult</span>
+                    </div>
+                    <div className="vc-metric">
+                        <strong>4.8 / 5</strong>
+                        <span>Average patient satisfaction across specialties</span>
+                    </div>
+                </div>
             </div>
 
             {/* Filters */}
@@ -99,6 +114,11 @@ const VideoConsultationPage = () => {
                     <option value="experience">Experience (High to Low)</option>
                     <option value="availability">Availability First</option>
                 </select>
+            </div>
+
+            <div className="vc-results-bar">
+                <span>{filteredDocs.length} specialists matched your filters.</span>
+                <span>Use Instant Connect for fast triage, or schedule when the case is stable.</span>
             </div>
 
             {/* Grid */}

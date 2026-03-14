@@ -241,12 +241,16 @@ function dismissToast(t) {
 /* ============================================================
    COUNTER ANIMATION
    ============================================================ */
-function animateCounter(el, target, suffix, duration = 2000) {
+function animateCounter(el, target, suffix, duration = 2000, decimals = 0) {
     const start = performance.now();
     const tick = (now) => {
         const p = Math.min((now - start) / duration, 1);
         const ease = 1 - Math.pow(1 - p, 3); // ease-out-cubic
-        el.textContent = Math.floor(ease * target).toLocaleString('en-IN') + suffix;
+        const rawValue = ease * target;
+        const value = decimals > 0
+            ? rawValue.toFixed(decimals)
+            : Math.floor(rawValue).toLocaleString('en-IN');
+        el.textContent = value + suffix;
         if (p < 1) requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
@@ -258,9 +262,10 @@ const statsObserver = new IntersectionObserver((entries) => {
         document.querySelectorAll('.stat-card').forEach(card => {
             const numEl = card.querySelector('.stat-number');
             if (!numEl) return;
-            const count = parseInt(card.dataset.count || '0');
+            const count = parseFloat(card.dataset.count || '0');
             const suffix = card.dataset.suffix || '';
-            animateCounter(numEl, count, suffix, 2400);
+            const decimals = parseInt(card.dataset.decimals || '0', 10);
+            animateCounter(numEl, count, suffix, 2400, decimals);
         });
         statsObserver.disconnect();
     });

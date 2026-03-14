@@ -13,7 +13,10 @@
     <link rel="stylesheet" href="style.css" />
     <style>
         body {
-            background: var(--bg);
+            background:
+                radial-gradient(circle at top right, rgba(43, 127, 255, 0.12), transparent 28%),
+                radial-gradient(circle at bottom left, rgba(39, 174, 96, 0.14), transparent 30%),
+                linear-gradient(180deg, #f8fbff, #eef4fb);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -34,12 +37,24 @@
 
         .auth-container {
             width: 100%;
-            max-width: 440px;
-            background: white;
-            border-radius: var(--radius);
-            box-shadow: var(--shadow-md);
-            padding: 28px 36px 32px;
+            max-width: 480px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 28px;
+            box-shadow: 0 30px 80px rgba(15, 23, 42, 0.12);
+            padding: 32px 36px 34px;
             text-align: center;
+            border: 1px solid rgba(226, 232, 240, 0.85);
+            backdrop-filter: blur(18px);
+        }
+
+        .auth-topnote {
+            margin: 18px 0 0;
+            padding: 12px 14px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, rgba(39, 174, 96, 0.08), rgba(43, 127, 255, 0.08));
+            color: var(--muted);
+            font-size: 13px;
+            text-align: left;
         }
 
         .auth-title {
@@ -240,6 +255,7 @@
         <h1 class="auth-title" id="auth-title">Welcome Back</h1>
         <p class="auth-subtitle" id="auth-subtitle">Sign in to your EmergiX account to manage emergencies and view
             real-time tracking.</p>
+        <div class="auth-topnote">Use patient access for emergency requests, doctor access for consultations, and ambulance access for fleet operations.</div>
 
         <!-- Role Toggle Tabs -->
         <div class="role-tabs">

@@ -494,6 +494,20 @@ const AmbulanceDispatchApp = () => {
                     <div className="ad-header">
                         <h1 className="ad-title">Ambulance Dispatch</h1>
                         <p className="ad-subtitle">Select your dispatch method. Every second counts.</p>
+                        <div className="ad-hero-stats">
+                            <div className="ad-hero-stat">
+                                <strong>&lt; 60 sec</strong>
+                                <span>Fastest triage path to dispatch</span>
+                            </div>
+                            <div className="ad-hero-stat">
+                                <strong>ALS / BLS</strong>
+                                <span>Unit assignment by severity and need</span>
+                            </div>
+                            <div className="ad-hero-stat">
+                                <strong>Live ETA</strong>
+                                <span>Track vehicle progress after confirmation</span>
+                            </div>
+                        </div>
                     </div>
 
                     <div className="ad-options-container">

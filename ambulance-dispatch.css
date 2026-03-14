@@ -6,12 +6,16 @@
 }
 
 .ad-header {
-    text-align: center;
     margin-bottom: 2rem;
+    padding: 1.75rem;
+    border-radius: 24px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(255, 247, 237, 0.98));
+    border: 1px solid rgba(251, 146, 60, 0.2);
+    box-shadow: 0 24px 60px rgba(124, 45, 18, 0.08);
 }
 
 .ad-title {
-    font-size: 2.5rem;
+    font-size: clamp(2rem, 4vw, 3.2rem);
     font-weight: 700;
     color: #1E293B;
     margin-bottom: 0.5rem;
@@ -20,6 +24,34 @@
 .ad-subtitle {
     color: #64748B;
     font-size: 1.1rem;
+    max-width: 52ch;
+}
+
+.ad-hero-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.ad-hero-stat {
+    padding: 1rem 1.1rem;
+    border-radius: 18px;
+    background: #fff;
+    border: 1px solid rgba(226, 232, 240, 0.9);
+}
+
+.ad-hero-stat strong {
+    display: block;
+    font-size: 1.35rem;
+    color: #9A3412;
+}
+
+.ad-hero-stat span {
+    display: block;
+    margin-top: 0.2rem;
+    color: #64748B;
+    font-size: 0.92rem;
 }
 
 /* Home Selection Cards */
@@ -32,22 +64,22 @@
 }
 
 .ad-option-card {
-    background: #fff;
-    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 24px;
     padding: 2.5rem 2rem;
     width: 100%;
     max-width: 400px;
     text-align: center;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
-    border: 1px solid #E2E8F0;
+    box-shadow: 0 20px 48px rgba(15, 23, 42, 0.08);
+    border: 1px solid rgba(226, 232, 240, 0.9);
     cursor: pointer;
     transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
 }
 
 .ad-option-card:hover {
     transform: translateY(-5px);
-    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
-    border-color: #2B7FFF;
+    box-shadow: 0 28px 54px rgba(15, 23, 42, 0.12);
+    border-color: #F97316;
 }
 
 .ad-icon {
@@ -92,15 +124,16 @@
 /* Modals / Forms Container */
 .ad-modal-wrap {
     background: #fff;
-    border-radius: 16px;
+    border-radius: 24px;
     max-width: 600px;
     margin: 0 auto;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 28px 70px rgba(15, 23, 42, 0.14);
     overflow: hidden;
+    border: 1px solid rgba(226, 232, 240, 0.9);
 }
 
 .ad-modal-header {
-    background: #1E293B;
+    background: linear-gradient(135deg, #1E293B, #334155);
     color: #fff;
     padding: 1.5rem 2rem;
     display: flex;
@@ -129,11 +162,12 @@
     width: 100%;
     padding: 0.85rem 1rem;
     border: 1px solid #CBD5E1;
-    border-radius: 8px;
+    border-radius: 12px;
     font-family: inherit;
     font-size: 1rem;
     box-sizing: border-box;
     transition: all 0.2s;
+    background: #F8FAFC;
 }
 
 .ad-input:focus,
@@ -147,7 +181,7 @@
     width: 100%;
     padding: 1rem;
     border: none;
-    border-radius: 8px;
+    border-radius: 14px;
     font-family: inherit;
     font-size: 1.05rem;
     font-weight: 600;
@@ -253,6 +287,12 @@
     border-color: #2B7FFF;
     color: #2B7FFF;
     background: #EEF6FF;
+}
+
+@media (max-width: 900px) {
+    .ad-hero-stats {
+        grid-template-columns: 1fr;
+    }
 }
 
 /* Status Cards */
