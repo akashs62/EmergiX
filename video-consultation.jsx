@@ -59,10 +59,7 @@ const VideoConsultationPage = () => {
     };
 
     const handleConsult = (doc) => {
-        setSelectedDoc(doc);
-        setModalUI('booking');
-        setConsultType('instant');
-        setPatientInfo({ name: '', phone: '', symptoms: '' });
+        window.location.href = `doctor-profile.html?id=${doc.id}`;
     };
 
     const handleMockPayment = () => {
@@ -142,14 +139,13 @@ const VideoConsultationPage = () => {
                         <div className="vc-price">₹{doc.fee} <span style={{ fontSize: '0.85rem', color: '#64748B', fontWeight: '400' }}>/ consult</span></div>
                         <button
                             className="vc-btn vc-btn-primary"
-                            disabled={doc.status === 'Busy'}
                             onClick={() => handleConsult(doc)}
                         >
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                                 <rect x="2" y="3" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="2" />
                                 <path d="M8 21h8M12 17v4" stroke="currentColor" strokeWidth="2" />
                             </svg>
-                            {doc.status === 'Available' ? 'Consult Now' : 'Doctor is Busy'}
+                            Book Consultation
                         </button>
                     </div>
                 ))}
