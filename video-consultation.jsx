@@ -1,16 +1,7 @@
 const { useState, useEffect, useMemo } = React;
 
-const mockDoctors = [
-    { id: 1, name: "Dr. Raj Mehta", specialization: "General Physician", experience: 12, fee: 500, rating: 4.8, status: "Available" },
-    { id: 2, name: "Dr. Ananya Sen", specialization: "ENT", experience: 8, fee: 600, rating: 4.7, status: "Available" },
-    { id: 3, name: "Dr. Vikram Rao", specialization: "Cardiology", experience: 15, fee: 800, rating: 4.9, status: "Busy" },
-    { id: 4, name: "Dr. Priya Sharma", specialization: "Neurology", experience: 10, fee: 900, rating: 4.6, status: "Available" },
-    { id: 5, name: "Dr. Arjun Das", specialization: "Orthopedic", experience: 7, fee: 700, rating: 4.5, status: "Available" },
-    { id: 6, name: "Dr. Suman Roy", specialization: "General Physician", experience: 5, fee: 400, rating: 4.4, status: "Busy" },
-    { id: 7, name: "Dr. Kavita Nair", specialization: "Cardiology", experience: 20, fee: 1200, rating: 5.0, status: "Available" },
-];
-
 const VideoConsultationPage = () => {
+    const [doctors, setDoctors] = useState([]);
     const [search, setSearch] = useState('');
     const [specFilter, setSpecFilter] = useState('');
     const [sortBy, setSortBy] = useState('');
@@ -24,10 +15,22 @@ const VideoConsultationPage = () => {
 
     // Call UI State
     const [callTime, setCallTime] = useState(0);
-    const availableCount = mockDoctors.filter(doc => doc.status === 'Available').length;
+
+    useEffect(() => {
+        fetch('/api/doctors')
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    setDoctors(data.data);
+                }
+            })
+            .catch(err => console.error('Failed to load doctors:', err));
+    }, []);
+
+    const availableCount = doctors.filter(doc => doc.status === 'Available').length;
 
     const filteredDocs = useMemo(() => {
-        let res = [...mockDoctors];
+        let res = [...doctors];
         if (search) {
             const q = search.toLowerCase();
             res = res.filter(d => d.name.toLowerCase().includes(q) || d.specialization.toLowerCase().includes(q));
@@ -39,7 +42,7 @@ const VideoConsultationPage = () => {
         if (sortBy === 'availability') res.sort((a, b) => (a.status === 'Available' ? -1 : 1));
 
         return res;
-    }, [search, specFilter, sortBy]);
+    }, [search, specFilter, sortBy, doctors]);
 
     useEffect(() => {
         let interval = null;

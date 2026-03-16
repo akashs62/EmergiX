@@ -191,6 +191,123 @@ window.handleSignin = function (e) {
     showToast('✅ Signed in successfully! Welcome back.', 'success');
 };
 
+/* ============================================================
+   LIVE DATA FETCHING (STATS & REVIEWS)
+   ============================================================ */
+async function fetchStats() {
+    try {
+        const response = await fetch('/api/stats');
+        const result = await response.json();
+        if (result.status === 'success') {
+            const d = result.data;
+            // Update big numbers
+            updateStat('s-lives', d.doctors);
+            updateStat('s-amb', d.ambulances);
+            updateStat('s-rating', d.avgRating, 1);
+            updateStat('s-cities', d.cities);
+
+            // Update hero float cards
+            const heroLives = document.getElementById('heroLives');
+            if (heroLives) animateCounter(heroLives, d.cases, '');
+
+            const heroRating = document.querySelector('.card-hosp .hfc-num');
+            if (heroRating) animateCounter(heroRating, d.doctors, '');
+        }
+    } catch (err) {
+        console.error('Stats fetch failed:', err);
+    }
+}
+
+function updateStat(id, value, decimals = 0) {
+    const el = document.getElementById(id);
+    if (el) {
+        // Update data-count for the observer to pick it up if it hasn't run yet
+        const card = el.closest('.stat-card');
+        if (card) {
+            card.dataset.count = value;
+            card.dataset.decimals = decimals;
+        }
+        // If already visible, just update it
+        animateCounter(el, value, '', 1500, decimals);
+    }
+}
+
+async function fetchReviews() {
+    const container = document.getElementById('reviews-list-container');
+    if (!container) return;
+
+    try {
+        const response = await fetch('/api/reviews');
+        const result = await response.json();
+        if (result.status === 'success' && result.data.length > 0) {
+            container.innerHTML = result.data.map(rev => `
+                <div class="testi-card anim-up in">
+                    <div style="color: #F59E0B; margin-bottom: 0.75rem; font-size: 1.1rem;">
+                        ${'★'.repeat(rev.rating)}${'☆'.repeat(5 - rev.rating)}
+                    </div>
+                    <p style="font-style: italic; color: #475569; margin-bottom: 1.25rem;">"${rev.message}"</p>
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <div style="width: 36px; height: 36px; border-radius: 50%; background: #EEF6FF; color: #2B7FFF; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem;">
+                            ${rev.name.charAt(0)}
+                        </div>
+                        <span style="font-weight: 700; color: #1E293B; font-size: 0.95rem;">${rev.name}</span>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            container.innerHTML = '<div style="text-align:center; color:#64748B; padding:2rem; width:100%;">No reviews yet. Be the first to leave one!</div>';
+        }
+    } catch (err) {
+        console.error('Reviews fetch failed:', err);
+        container.innerHTML = '<div style="text-align:center; color:#EF4444; padding:2rem; width:100%;">Failed to load reviews.</div>';
+    }
+}
+
+// Update review form submission
+document.addEventListener('DOMContentLoaded', () => {
+    const reviewForm = document.querySelector('.review-form');
+    if (reviewForm) {
+        reviewForm.onsubmit = async (e) => {
+            e.preventDefault();
+            const btn = reviewForm.querySelector('button[type=submit]');
+            const originalText = btn.innerText;
+
+            const name = document.getElementById('revName').value;
+            const rating = document.getElementById('revRating').value;
+            const message = document.getElementById('revMsg').value;
+
+            try {
+                btn.innerText = 'Submitting...';
+                btn.disabled = true;
+
+                const response = await fetch('/api/reviews', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, rating, message })
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    showToast('✅ Thank you! Your review has been submitted successfully.', 'success');
+                    reviewForm.reset();
+                    fetchReviews(); // Refresh list
+                } else {
+                    showToast('❌ ' + (data.error || 'Failed to submit review'), 'error');
+                }
+            } catch (err) {
+                showToast('❌ Network error. Please try again.', 'error');
+            } finally {
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }
+        };
+    }
+
+    // Initial load
+    fetchStats();
+    fetchReviews();
+});
+
 /* ---- LIVE MAP button ---- */
 const btnLiveMap = document.getElementById('btnLiveMap');
 if (btnLiveMap) {

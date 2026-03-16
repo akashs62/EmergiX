@@ -1,14 +1,6 @@
 const { useState, useEffect, useMemo } = React;
 
-const mockDoctors = [
-    { id: 1, name: "Dr. Raj Mehta", specialization: "General Physician", experience: 12, fee: 500, rating: 4.8, status: "Available", age: 45, languages: "English, Hindi" },
-    { id: 2, name: "Dr. Ananya Sen", specialization: "ENT", experience: 8, fee: 600, rating: 4.7, status: "Available", age: 38, languages: "English, Bengali" },
-    { id: 3, name: "Dr. Vikram Rao", specialization: "Cardiology", experience: 15, fee: 800, rating: 4.9, status: "Busy", age: 50, languages: "English, Hindi, Telugu" },
-    { id: 4, name: "Dr. Priya Sharma", specialization: "Neurology", experience: 10, fee: 900, rating: 4.6, status: "Available", age: 42, languages: "English, Hindi" },
-    { id: 5, name: "Dr. Arjun Das", specialization: "Orthopedic", experience: 7, fee: 700, rating: 4.5, status: "Available", age: 36, languages: "English, Marathi" },
-    { id: 6, name: "Dr. Suman Roy", specialization: "General Physician", experience: 5, fee: 400, rating: 4.4, status: "Busy", age: 32, languages: "English, Hindi" },
-    { id: 7, name: "Dr. Kavita Nair", specialization: "Cardiology", experience: 20, fee: 1200, rating: 5.0, status: "Available", age: 55, languages: "English, Malayalam, Tamil" },
-];
+
 
 const DoctorProfilePage = () => {
     const [doctor, setDoctor] = useState(null);
@@ -16,12 +8,22 @@ const DoctorProfilePage = () => {
     const [selectedDate, setSelectedDate] = useState(null);
     const [selectedTime, setSelectedTime] = useState(null);
     const [patientDetails, setPatientDetails] = useState({ name: '', age: '', sex: '', symptoms: '' });
+    const [bookingState, setBookingState] = useState('idle'); // 'idle' | 'loading' | 'success' | 'error'
+    const [confirmedId, setConfirmedId] = useState(null);
 
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
-        const id = parseInt(params.get('id'), 10);
-        const doc = mockDoctors.find(d => d.id === id);
-        setDoctor(doc);
+        const id = params.get('id');
+        if (id) {
+            fetch(`/api/doctors/${id}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        setDoctor(data.data);
+                    }
+                })
+                .catch(err => console.error('Error fetching doctor:', err));
+        }
     }, []);
 
     const dates = useMemo(() => {
@@ -320,18 +322,43 @@ const DoctorProfilePage = () => {
 
                                         <button
                                             className="vc-btn glow-btn-secondary"
-                                            disabled={!(patientDetails.name && patientDetails.age && patientDetails.sex && patientDetails.symptoms)}
+                                            disabled={!(patientDetails.name && patientDetails.age && patientDetails.sex && patientDetails.symptoms) || bookingState === 'loading' || bookingState === 'success'}
                                             style={{
                                                 width: '100%', padding: '18px', borderRadius: '12px', border: 'none',
-                                                background: (patientDetails.name && patientDetails.age && patientDetails.sex && patientDetails.symptoms) ? '#27AE60' : '#E2E8F0',
-                                                color: (patientDetails.name && patientDetails.age && patientDetails.sex && patientDetails.symptoms) ? 'white' : '#94A3B8',
-                                                fontWeight: '700', fontSize: '1.1rem', cursor: (patientDetails.name && patientDetails.age && patientDetails.sex && patientDetails.symptoms) ? 'pointer' : 'not-allowed',
-                                                transition: 'all 0.3s', marginTop: '8px',
-                                                animation: (patientDetails.name && patientDetails.age && patientDetails.sex && patientDetails.symptoms) ? 'glow-secondary 2.5s ease-in-out infinite alternate' : 'none'
+                                                background: bookingState === 'success' ? '#059669' : bookingState === 'error' ? '#DC2626' : (patientDetails.name && patientDetails.age && patientDetails.sex && patientDetails.symptoms) ? '#27AE60' : '#E2E8F0',
+                                                color: (patientDetails.name && patientDetails.age && patientDetails.sex && patientDetails.symptoms) || bookingState !== 'idle' ? 'white' : '#94A3B8',
+                                                fontWeight: '700', fontSize: '1.1rem', cursor: (patientDetails.name && patientDetails.age && patientDetails.sex && patientDetails.symptoms) && bookingState === 'idle' ? 'pointer' : 'not-allowed',
+                                                transition: 'all 0.3s', marginTop: '8px'
                                             }}
-                                            onClick={() => alert(`Confirmed booking for ${patientDetails.name} on ${new Date(selectedDate).toLocaleDateString()} at ${selectedTime}.`)}
+                                            onClick={async () => {
+                                                setBookingState('loading');
+                                                try {
+                                                    const res = await fetch('/api/appointments', {
+                                                        method: 'POST',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify({
+                                                            doctorId: doctor.id,
+                                                            patientName: patientDetails.name,
+                                                            patientAge: parseInt(patientDetails.age),
+                                                            patientSex: patientDetails.sex,
+                                                            symptoms: patientDetails.symptoms,
+                                                            appointmentDate: new Date(selectedDate).toISOString(),
+                                                            appointmentTime: selectedTime
+                                                        })
+                                                    });
+                                                    const data = await res.json();
+                                                    if (res.ok) {
+                                                        setConfirmedId(data.appointmentId);
+                                                        setBookingState('success');
+                                                    } else {
+                                                        setBookingState('error');
+                                                    }
+                                                } catch {
+                                                    setBookingState('error');
+                                                }
+                                            }}
                                         >
-                                            Confirm Appointment • ₹{doctor.fee}
+                                            {bookingState === 'loading' ? 'Confirming...' : bookingState === 'success' ? `✓ Booked — ${confirmedId}` : bookingState === 'error' ? 'Failed — Retry' : `Confirm Appointment • ₹${doctor.fee}`}
                                         </button>
                                         {(selectedDate && selectedTime) && !(patientDetails.name && patientDetails.age && patientDetails.sex && patientDetails.symptoms) && (
                                             <p style={{ fontSize: '0.8rem', color: '#DC2626', textAlign: 'center', margin: '0' }}>Please fill all patient details to confirm.</p>

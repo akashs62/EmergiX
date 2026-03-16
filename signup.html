@@ -412,64 +412,85 @@
             const button = document.getElementById('submit-btn');
             const errorMessage = document.getElementById('error-message');
 
+            const btnTexts = { patient: 'Create Account', doctor: 'Create Doctor Account', ambulance: 'Create Provider Account' };
+            const redirectMap = { patient: 'index.html', doctor: 'doctor-dashboard.html', ambulance: 'ambulance-dashboard.html' };
+            const successColors = { patient: '#27ae60', doctor: '#4f46e5', ambulance: '#ea580c' };
+
             errorMessage.style.display = 'none';
             button.innerText = 'Creating account...';
             button.disabled = true;
             button.style.opacity = '0.7';
 
+            // Build payload
+            const payload = { name, email, password, role: currentRole };
+
+            if (currentRole === 'doctor') {
+                const license = document.getElementById('license').value;
+                const specialization = document.getElementById('specialization').value;
+                if (!license.trim()) {
+                    errorMessage.innerText = 'Please enter your Medical License Number.';
+                    errorMessage.style.display = 'block';
+                    button.innerText = btnTexts[currentRole]; button.disabled = false; button.style.opacity = '1';
+                    return;
+                }
+                if (!specialization) {
+                    errorMessage.innerText = 'Please select your specialization.';
+                    errorMessage.style.display = 'block';
+                    button.innerText = btnTexts[currentRole]; button.disabled = false; button.style.opacity = '1';
+                    return;
+                }
+                payload.licenseNo = license;
+                payload.specialization = specialization;
+            } else if (currentRole === 'ambulance') {
+                const fleetName = document.getElementById('fleet-name').value;
+                const fleetId = document.getElementById('fleet-id').value;
+                if (!fleetName.trim()) {
+                    errorMessage.innerText = 'Please enter your Fleet / Company Name.';
+                    errorMessage.style.display = 'block';
+                    button.innerText = btnTexts[currentRole]; button.disabled = false; button.style.opacity = '1';
+                    return;
+                }
+                if (!fleetId.trim()) {
+                    errorMessage.innerText = 'Please enter your Fleet Registration ID.';
+                    errorMessage.style.display = 'block';
+                    button.innerText = btnTexts[currentRole]; button.disabled = false; button.style.opacity = '1';
+                    return;
+                }
+                payload.fleetName = fleetName;
+                payload.fleetId = fleetId;
+            }
+
             try {
-                if (currentRole === 'doctor') {
-                    const license = document.getElementById('license').value;
-                    const specialization = document.getElementById('specialization').value;
-                    if (!license.trim()) throw new Error('Please enter your Medical License Number.');
-                    if (!specialization) throw new Error('Please select your specialization.');
+                const response = await fetch('/api/auth/signup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
 
-                    setTimeout(() => {
-                        localStorage.setItem('token', 'mock-doctor-token-' + Date.now());
-                        localStorage.setItem('userEmail', email);
-                        localStorage.setItem('userName', name);
-                        localStorage.setItem('userRole', 'doctor');
-                        localStorage.setItem('doctorSpecialization', specialization);
-                        localStorage.setItem('doctorLicense', license);
-                        button.style.background = '#4f46e5';
-                        button.innerText = 'Doctor Account Created!';
-                        setTimeout(() => window.location.href = 'doctor-dashboard.html', 800);
-                    }, 1000);
-                } else if (currentRole === 'ambulance') {
-                    const fleetName = document.getElementById('fleet-name').value;
-                    const fleetId = document.getElementById('fleet-id').value;
-                    if (!fleetName.trim()) throw new Error('Please enter your Fleet / Company Name.');
-                    if (!fleetId.trim()) throw new Error('Please enter your Fleet Registration ID.');
+                if (response.ok) {
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('userEmail', data.user.email);
+                    localStorage.setItem('userName', data.user.name);
+                    localStorage.setItem('userRole', data.user.role);
+                    if (payload.licenseNo) localStorage.setItem('doctorLicense', payload.licenseNo);
+                    if (payload.specialization) localStorage.setItem('doctorSpecialization', payload.specialization);
+                    if (payload.fleetId) localStorage.setItem('ambulanceFleetId', payload.fleetId);
+                    if (payload.fleetName) localStorage.setItem('ambulanceFleetName', payload.fleetName);
 
-                    setTimeout(() => {
-                        localStorage.setItem('token', 'mock-ambulance-token-' + Date.now());
-                        localStorage.setItem('userEmail', email);
-                        localStorage.setItem('userName', name);
-                        localStorage.setItem('userRole', 'ambulance');
-                        localStorage.setItem('ambulanceFleetName', fleetName);
-                        localStorage.setItem('ambulanceFleetId', fleetId);
-                        button.style.background = '#ea580c';
-                        button.innerText = 'Provider Account Created!';
-                        setTimeout(() => window.location.href = 'ambulance-dashboard.html', 800);
-                    }, 1000);
+                    button.style.background = successColors[currentRole];
+                    button.innerText = 'Account Created!';
+                    setTimeout(() => window.location.href = redirectMap[currentRole], 800);
                 } else {
-                    setTimeout(() => {
-                        localStorage.setItem('token', 'mock-new-user-token');
-                        localStorage.setItem('userEmail', email);
-                        localStorage.setItem('userName', name);
-                        localStorage.setItem('userRole', 'patient');
-                        button.style.background = '#27ae60';
-                        button.innerText = 'Account Created!';
-                        setTimeout(() => window.location.href = 'index.html', 800);
-                    }, 1000);
+                    errorMessage.innerText = data.error || 'Failed to create account. Please try again.';
+                    errorMessage.style.display = 'block';
+                    button.innerText = btnTexts[currentRole]; button.disabled = false; button.style.opacity = '1';
                 }
             } catch (err) {
-                errorMessage.innerText = err.message;
+                console.error(err);
+                errorMessage.innerText = 'Network error. Please make sure the backend server is running.';
                 errorMessage.style.display = 'block';
-                const btnTexts = { patient: 'Create Account', doctor: 'Create Doctor Account', ambulance: 'Create Provider Account' };
-                button.innerText = btnTexts[currentRole];
-                button.disabled = false;
-                button.style.opacity = '1';
+                button.innerText = btnTexts[currentRole]; button.disabled = false; button.style.opacity = '1';
             }
         });
     </script>
