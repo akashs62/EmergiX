@@ -13,40 +13,29 @@ router.get('/', async (req, res) => {
     try {
         const db = getSupabaseAdmin();
 
-        // 1. Specialist Doctors (Role: doctor)
-        const { count: doctorCount, error: err1 } = await db
-            .from('users')
-            .select('*', { count: 'exact', head: true })
-            .eq('role', 'doctor');
+        const [doctorResult, ambulanceResult, bookingResult, appointmentResult, reviewResult] = await Promise.all([
+            db.from('users').select('*', { count: 'exact', head: true }).eq('role', 'doctor'),
+            db.from('users').select('*', { count: 'exact', head: true }).eq('role', 'ambulance'),
+            db.from('bookings').select('*', { count: 'exact', head: true }),
+            db.from('appointments').select('*', { count: 'exact', head: true }),
+            db.from('reviews').select('rating').eq('approved', true)
+        ]);
 
-        // 2. Ambulances (Role: ambulance)
-        const { count: ambCount, error: err2 } = await db
-            .from('users')
-            .select('*', { count: 'exact', head: true })
-            .eq('role', 'ambulance');
-
-        // 3. Emergency Cases (Total bookings + appointments)
-        const { count: bookingCount, error: err3 } = await db
-            .from('bookings')
-            .select('*', { count: 'exact', head: true });
-
-        const { count: appointCount, error: err4 } = await db
-            .from('appointments')
-            .select('*', { count: 'exact', head: true });
-
-        // 4. Average Rating
-        const { data: reviews, error: err5 } = await db
-            .from('reviews')
-            .select('rating')
-            .eq('approved', true);
+        const doctorCount = doctorResult.count;
+        const ambCount = ambulanceResult.count;
+        const bookingCount = bookingResult.count;
+        const appointCount = appointmentResult.count;
+        const reviews = reviewResult.data;
+        const statsError = doctorResult.error || ambulanceResult.error || bookingResult.error || appointmentResult.error || reviewResult.error;
 
         let avgRating = 0;
         if (reviews && reviews.length > 0) {
             avgRating = reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length;
         }
 
-        if (err1 || err2 || err3 || err4 || err5) {
-            console.error('Stats fetch error:', { err1, err2, err3, err4, err5 });
+        if (statsError) {
+            console.error('Stats fetch error:', statsError);
+            return res.status(500).json({ error: 'Failed to fetch platform statistics.' });
         }
 
         return res.status(200).json({

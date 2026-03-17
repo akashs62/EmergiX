@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { getSupabaseAdmin, isConnected } = require('../config/supabase');
+const normalizeText = (value = '') => String(value).trim();
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/doctors  — List all doctors (with optional filtering)
@@ -13,6 +14,8 @@ router.get('/', async (req, res) => {
     try {
         const db = getSupabaseAdmin();
         const { specialization, status, minRating, maxFee, search } = req.query;
+        const parsedMinRating = minRating ? Number.parseFloat(minRating) : null;
+        const parsedMaxFee = maxFee ? Number.parseInt(maxFee, 10) : null;
 
         let query = db
             .from('users')
@@ -20,19 +23,25 @@ router.get('/', async (req, res) => {
             .eq('role', 'doctor');
 
         if (specialization) {
-            query = query.ilike('specialization', `%${specialization}%`);
+            query = query.ilike('specialization', `%${normalizeText(specialization)}%`);
         }
         if (status) {
-            query = query.eq('status', status);
+            query = query.eq('status', normalizeText(status));
         }
-        if (minRating) {
-            query = query.gte('rating', parseFloat(minRating));
+        if (parsedMinRating !== null) {
+            if (Number.isNaN(parsedMinRating) || parsedMinRating < 0 || parsedMinRating > 5) {
+                return res.status(400).json({ error: 'minRating must be a number between 0 and 5.' });
+            }
+            query = query.gte('rating', parsedMinRating);
         }
-        if (maxFee) {
-            query = query.lte('fee', parseInt(maxFee));
+        if (parsedMaxFee !== null) {
+            if (Number.isNaN(parsedMaxFee) || parsedMaxFee < 0) {
+                return res.status(400).json({ error: 'maxFee must be a positive integer.' });
+            }
+            query = query.lte('fee', parsedMaxFee);
         }
         if (search) {
-            const q = search.toLowerCase();
+            const q = normalizeText(search).toLowerCase();
             query = query.or(`name.ilike.%${q}%,specialization.ilike.%${q}%,languages.ilike.%${q}%`);
         }
 

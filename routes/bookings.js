@@ -5,9 +5,8 @@ const { protect, authorize } = require('../middleware/auth');
 
 const genBookingId = () => `EMG-${Math.floor(10000 + Math.random() * 90000)}`;
 const genVehicleId = (type) => `${type}-${Math.floor(100 + Math.random() * 900)}`;
+const normalizeText = (value = '') => String(value).trim();
 
-// ─────────────────────────────────────────────────────────────────────────────
-// GET /api/bookings (List all for admin/fleet)
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/bookings (List all for admin/fleet)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -41,8 +40,15 @@ router.post('/', async (req, res) => {
     }
 
     const { patientName, contact, location, emergencyType, ambType, source, severity, reason } = req.body;
+    const cleanPatientName = normalizeText(patientName);
+    const cleanContact = normalizeText(contact);
+    const cleanLocation = normalizeText(location);
+    const cleanEmergencyType = normalizeText(emergencyType).toLowerCase() || 'other';
+    const cleanSource = normalizeText(source) || 'direct';
+    const cleanSeverity = normalizeText(severity) || null;
+    const cleanReason = normalizeText(reason) || null;
 
-    if (!patientName || !contact || !location) {
+    if (!cleanPatientName || !cleanContact || !cleanLocation) {
         return res.status(400).json({ error: 'Patient name, contact, and location are required.' });
     }
 
@@ -58,14 +64,14 @@ router.post('/', async (req, res) => {
             .insert({
                 booking_id: bookingId,
                 vehicle_id: vehicleId,
-                source: source || 'direct',
-                patient_name: patientName,
-                contact,
-                location,
-                emergency_type: emergencyType || 'other',
+                source: cleanSource,
+                patient_name: cleanPatientName,
+                contact: cleanContact,
+                location: cleanLocation,
+                emergency_type: cleanEmergencyType,
                 amb_type: resolvedAmbType,
-                severity: severity || null,
-                reason: reason || null,
+                severity: cleanSeverity,
+                reason: cleanReason,
                 status: 'dispatched'
             })
             .select('*')
@@ -119,12 +125,13 @@ router.patch('/:bookingId/cancel', async (req, res) => {
 
     const { bookingId } = req.params;
     const { cancelReason } = req.body;
+    const cleanCancelReason = normalizeText(cancelReason);
 
     try {
         const db = getSupabaseAdmin();
         const { data, error } = await db
             .from('bookings')
-            .update({ status: 'cancelled', cancel_reason: cancelReason })
+            .update({ status: 'cancelled', cancel_reason: cleanCancelReason || null })
             .eq('booking_id', bookingId)
             .select()
             .maybeSingle();

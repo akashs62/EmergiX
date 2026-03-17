@@ -17,6 +17,9 @@ const signToken = (payload) =>
         expiresIn: process.env.JWT_EXPIRES_IN || '7d'
     });
 
+const normalizeEmail = (email = '') => email.trim().toLowerCase();
+const normalizeRole = (role = 'patient') => String(role).trim().toLowerCase();
+
 const validateSignup = (body, role) => {
     const { name, email, password } = body;
     if (!name || name.trim().length < 2) return 'Name must be at least 2 characters.';
@@ -32,8 +35,10 @@ const validateSignup = (body, role) => {
 // ─────────────────────────────────────────────────────────────────────────────
 router.post('/signup', async (req, res) => {
     const { name, email, password, role = 'patient', licenseNo, specialization, fleetId, fleetName } = req.body;
+    const cleanEmail = normalizeEmail(email);
+    const cleanRole = normalizeRole(role);
 
-    const validationError = validateSignup(req.body, role);
+    const validationError = validateSignup(req.body, cleanRole);
     if (validationError) return res.status(400).json({ error: validationError });
 
     try {
@@ -44,7 +49,7 @@ router.post('/signup', async (req, res) => {
             const { data: existing } = await db
                 .from('users')
                 .select('id')
-                .eq('email', email.toLowerCase())
+                .eq('email', cleanEmail)
                 .maybeSingle();
 
             if (existing) return res.status(409).json({ error: 'An account with this email already exists.' });
@@ -55,13 +60,13 @@ router.post('/signup', async (req, res) => {
                 .from('users')
                 .insert({
                     name: name.trim(),
-                    email: email.toLowerCase(),
+                    email: cleanEmail,
                     password_hash: passwordHash,
-                    role,
-                    license_no: role === 'doctor' ? licenseNo?.trim() : null,
-                    specialization: role === 'doctor' ? specialization : null,
-                    fleet_id: role === 'ambulance' ? fleetId?.trim() : null,
-                    fleet_name: role === 'ambulance' ? fleetName?.trim() : null,
+                    role: cleanRole,
+                    license_no: cleanRole === 'doctor' ? licenseNo?.trim() : null,
+                    specialization: cleanRole === 'doctor' ? specialization : null,
+                    fleet_id: cleanRole === 'ambulance' ? fleetId?.trim() : null,
+                    fleet_name: cleanRole === 'ambulance' ? fleetName?.trim() : null,
                 })
                 .select('id, name, email, role')
                 .single();
@@ -73,20 +78,20 @@ router.post('/signup', async (req, res) => {
 
         } else {
             // In-memory fallback
-            const existing = memUsers.find(u => u.email === email.toLowerCase());
+            const existing = memUsers.find(u => u.email === cleanEmail);
             if (existing) return res.status(409).json({ error: 'An account with this email already exists.' });
 
             const passwordHash = await bcrypt.hash(password, 12);
             const newUser = {
                 id: `usr_${Date.now()}`,
                 name: name.trim(),
-                email: email.toLowerCase(),
+                email: cleanEmail,
                 password_hash: passwordHash,
-                role,
-                license_no: role === 'doctor' ? licenseNo : null,
-                specialization: role === 'doctor' ? specialization : null,
-                fleet_id: role === 'ambulance' ? fleetId : null,
-                fleet_name: role === 'ambulance' ? fleetName : null,
+                role: cleanRole,
+                license_no: cleanRole === 'doctor' ? licenseNo : null,
+                specialization: cleanRole === 'doctor' ? specialization : null,
+                fleet_id: cleanRole === 'ambulance' ? fleetId : null,
+                fleet_name: cleanRole === 'ambulance' ? fleetName : null,
             };
             memUsers.push(newUser);
 
@@ -108,6 +113,7 @@ router.post('/signup', async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 router.post('/signin', async (req, res) => {
     const { email, password } = req.body;
+    const cleanEmail = normalizeEmail(email);
     if (!email || !password) return res.status(400).json({ error: 'Email and password are required.' });
 
     try {
@@ -116,7 +122,7 @@ router.post('/signin', async (req, res) => {
             const { data: user } = await db
                 .from('users')
                 .select('id, name, email, role, password_hash')
-                .eq('email', email.toLowerCase())
+                .eq('email', cleanEmail)
                 .eq('role', 'patient')
                 .maybeSingle();
 
@@ -131,16 +137,16 @@ router.post('/signin', async (req, res) => {
             });
         } else {
             // Demo fallback — accept any valid email + password
-            const stored = memUsers.find(u => u.email === email.toLowerCase() && u.role === 'patient');
+            const stored = memUsers.find(u => u.email === cleanEmail && u.role === 'patient');
             if (stored && !(await bcrypt.compare(password, stored.password_hash))) {
                 return res.status(401).json({ error: 'Invalid email or password.' });
             }
             const name = stored ? stored.name : email.split('@')[0];
             const id = stored ? stored.id : `demo_${Date.now()}`;
-            const token = signToken({ id, email, role: 'patient', name });
+            const token = signToken({ id, email: cleanEmail, role: 'patient', name });
             return res.status(200).json({
                 status: 'success', token,
-                user: { id, email, role: 'patient', name }
+                user: { id, email: cleanEmail, role: 'patient', name }
             });
         }
     } catch (err) {
@@ -154,6 +160,7 @@ router.post('/signin', async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 router.post('/doctor/signin', async (req, res) => {
     const { email, password, licenseNo } = req.body;
+    const cleanEmail = normalizeEmail(email);
     if (!email || !password) return res.status(400).json({ error: 'Email and password are required.' });
     if (!licenseNo?.trim()) return res.status(400).json({ error: 'Medical License Number is required.' });
 
@@ -163,7 +170,7 @@ router.post('/doctor/signin', async (req, res) => {
             const { data: user } = await db
                 .from('users')
                 .select('id, name, email, role, password_hash, license_no, specialization')
-                .eq('email', email.toLowerCase())
+                .eq('email', cleanEmail)
                 .eq('role', 'doctor')
                 .maybeSingle();
 
@@ -180,11 +187,11 @@ router.post('/doctor/signin', async (req, res) => {
                 user: { id: user.id, name: user.name, email: user.email, role: 'doctor', licenseNo: user.license_no, specialization: user.specialization }
             });
         } else {
-            const doctorName = 'Dr. ' + email.split('@')[0];
-            const token = signToken({ id: `doc_${Date.now()}`, email, role: 'doctor', name: doctorName, licenseNo });
+            const doctorName = 'Dr. ' + cleanEmail.split('@')[0];
+            const token = signToken({ id: `doc_${Date.now()}`, email: cleanEmail, role: 'doctor', name: doctorName, licenseNo });
             return res.status(200).json({
                 status: 'success', token,
-                user: { email, role: 'doctor', name: doctorName, licenseNo, specialization: 'Emergency Medicine' }
+                user: { email: cleanEmail, role: 'doctor', name: doctorName, licenseNo, specialization: 'Emergency Medicine' }
             });
         }
     } catch (err) {
@@ -198,6 +205,7 @@ router.post('/doctor/signin', async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 router.post('/ambulance/signin', async (req, res) => {
     const { email, password, fleetId } = req.body;
+    const cleanEmail = normalizeEmail(email);
     if (!email || !password) return res.status(400).json({ error: 'Email and password are required.' });
     if (!fleetId?.trim()) return res.status(400).json({ error: 'Fleet Registration ID is required.' });
 
@@ -207,7 +215,7 @@ router.post('/ambulance/signin', async (req, res) => {
             const { data: user } = await db
                 .from('users')
                 .select('id, name, email, role, password_hash, fleet_id, fleet_name')
-                .eq('email', email.toLowerCase())
+                .eq('email', cleanEmail)
                 .eq('role', 'ambulance')
                 .maybeSingle();
 
@@ -224,10 +232,10 @@ router.post('/ambulance/signin', async (req, res) => {
                 user: { id: user.id, name: user.name, email: user.email, role: 'ambulance', fleetId: user.fleet_id, fleetName: user.fleet_name }
             });
         } else {
-            const token = signToken({ id: `amb_${Date.now()}`, email, role: 'ambulance', name: email.split('@')[0], fleetId });
+            const token = signToken({ id: `amb_${Date.now()}`, email: cleanEmail, role: 'ambulance', name: cleanEmail.split('@')[0], fleetId });
             return res.status(200).json({
                 status: 'success', token,
-                user: { email, role: 'ambulance', name: email.split('@')[0], fleetId, fleetName: 'EmergiX Fleet Services' }
+                user: { email: cleanEmail, role: 'ambulance', name: cleanEmail.split('@')[0], fleetId, fleetName: 'EmergiX Fleet Services' }
             });
         }
     } catch (err) {
@@ -241,7 +249,9 @@ router.post('/ambulance/signin', async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 router.post('/request-otp', async (req, res) => {
     const { email, role } = req.body;
-    if (!email || !role) return res.status(400).json({ error: 'Email and role are required.' });
+    const cleanEmail = normalizeEmail(email);
+    const cleanRole = normalizeRole(role);
+    if (!cleanEmail || !cleanRole) return res.status(400).json({ error: 'Email and role are required.' });
 
     try {
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -251,19 +261,21 @@ router.post('/request-otp', async (req, res) => {
             const db = getSupabaseAdmin();
             
             // Check if user exists
-            const { data: user } = await db.from('users').select('id').eq('email', email.toLowerCase()).eq('role', role).maybeSingle();
+            const { data: user } = await db.from('users').select('id').eq('email', cleanEmail).eq('role', cleanRole).maybeSingle();
             if (!user) return res.status(404).json({ error: 'No account found with this email and role.' });
 
             // Store OTP in database (optional, but let's use in-memory for speed/simplicity since schema doesn't have it)
             // If we want real persistence, we'd need an otps table.
-            memOTPs.set(`${email}:${role}`, { otp, expires, verified: false });
+            memOTPs.set(`${cleanEmail}:${cleanRole}`, { otp, expires, verified: false });
         } else {
-            const user = memUsers.find(u => u.email === email.toLowerCase() && u.role === role);
+            const user = memUsers.find(u => u.email === cleanEmail && u.role === cleanRole);
             if (!user) return res.status(404).json({ error: 'No account found with this email and role.' });
-            memOTPs.set(`${email}:${role}`, { otp, expires, verified: false });
+            memOTPs.set(`${cleanEmail}:${cleanRole}`, { otp, expires, verified: false });
         }
 
-        console.log(`\n[OTP DEBUG] OTP for ${email} (${role}): ${otp}\n`);
+        if ((process.env.NODE_ENV || 'development') !== 'production') {
+            console.log(`\n[OTP DEBUG] OTP for ${cleanEmail} (${cleanRole}): ${otp}\n`);
+        }
         
         // In a real app, send email here. For now, simulate.
         res.status(200).json({ status: 'success', message: 'OTP sent to your email.' });
@@ -278,7 +290,7 @@ router.post('/request-otp', async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 router.post('/verify-otp', async (req, res) => {
     const { email, role, otp } = req.body;
-    const stored = memOTPs.get(`${email}:${role}`);
+    const stored = memOTPs.get(`${normalizeEmail(email)}:${normalizeRole(role)}`);
 
     if (!stored || stored.otp !== otp || new Date() > stored.expires) {
         return res.status(400).json({ error: 'Invalid or expired OTP.' });
@@ -296,8 +308,14 @@ router.post('/reset-password', async (req, res) => {
     if (!email || !role || !newPassword || !otp) {
         return res.status(400).json({ error: 'All fields are required.' });
     }
+    if (String(newPassword).length < 6) {
+        return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+    }
 
-    const stored = memOTPs.get(`${email}:${role}`);
+    const cleanEmail = normalizeEmail(email);
+    const cleanRole = normalizeRole(role);
+
+    const stored = memOTPs.get(`${cleanEmail}:${cleanRole}`);
     if (!stored || !stored.verified || stored.otp !== otp) {
         return res.status(401).json({ error: 'OTP verification required.' });
     }
@@ -310,18 +328,18 @@ router.post('/reset-password', async (req, res) => {
             const { data, error } = await db
                 .from('users')
                 .update({ password_hash: passwordHash })
-                .eq('email', email.toLowerCase())
-                .eq('role', role)
+                .eq('email', cleanEmail)
+                .eq('role', cleanRole)
                 .select('id');
 
             if (error) throw error;
-            memOTPs.delete(`${email}:${role}`);
+            memOTPs.delete(`${cleanEmail}:${cleanRole}`);
             return res.status(200).json({ status: 'success', message: 'Password updated.' });
         } else {
-            const userIndex = memUsers.findIndex(u => u.email === email.toLowerCase() && u.role === role);
+            const userIndex = memUsers.findIndex(u => u.email === cleanEmail && u.role === cleanRole);
             if (userIndex === -1) return res.status(404).json({ error: 'Account not found.' });
             memUsers[userIndex].password_hash = passwordHash;
-            memOTPs.delete(`${email}:${role}`);
+            memOTPs.delete(`${cleanEmail}:${cleanRole}`);
             return res.status(200).json({ status: 'success', message: 'Password updated (In-memory).' });
         }
     } catch (err) {
@@ -335,7 +353,9 @@ router.post('/reset-password', async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 router.post('/google', async (req, res) => {
     const { email, name, role } = req.body;
-    if (!email || !role) return res.status(400).json({ error: 'Email and role are required.' });
+    const cleanEmail = normalizeEmail(email);
+    const cleanRole = normalizeRole(role);
+    if (!cleanEmail || !cleanRole) return res.status(400).json({ error: 'Email and role are required.' });
 
     try {
         if (isDBConnected()) {
@@ -345,8 +365,8 @@ router.post('/google', async (req, res) => {
             let { data: user } = await db
                 .from('users')
                 .select('id, name, email, role')
-                .eq('email', email.toLowerCase())
-                .eq('role', role)
+                .eq('email', cleanEmail)
+                .eq('role', cleanRole)
                 .maybeSingle();
 
             // If user doesn't exist, create a mock one (since it's a social login demo)
@@ -355,9 +375,9 @@ router.post('/google', async (req, res) => {
                     .from('users')
                     .insert({
                         name: name || email.split('@')[0],
-                        email: email.toLowerCase(),
+                        email: cleanEmail,
                         password_hash: 'google_oauth_bypass',
-                        role: role
+                        role: cleanRole
                     })
                     .select('id, name, email, role')
                     .single();
@@ -370,13 +390,13 @@ router.post('/google', async (req, res) => {
             return res.status(200).json({ status: 'success', token, user });
         } else {
             // In-memory fallback
-            let user = memUsers.find(u => u.email === email.toLowerCase() && u.role === role);
+            let user = memUsers.find(u => u.email === cleanEmail && u.role === cleanRole);
             if (!user) {
                 user = {
                     id: `google_${Date.now()}`,
                     name: name || email.split('@')[0],
-                    email: email.toLowerCase(),
-                    role
+                    email: cleanEmail,
+                    role: cleanRole
                 };
                 memUsers.push(user);
             }

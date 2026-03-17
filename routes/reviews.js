@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { isConnected, getSupabaseAdmin } = require('../config/supabase');
 const { protect } = require('../middleware/auth');
+const normalizeText = (value = '') => String(value).trim();
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/reviews
@@ -31,24 +32,25 @@ router.get('/', async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/reviews
 // ─────────────────────────────────────────────────────────────────────────────
-// POST /api/reviews
-// ─────────────────────────────────────────────────────────────────────────────
 router.post('/', protect, async (req, res) => {
     if (!isConnected()) {
         return res.status(503).json({ error: 'Database connection not available.' });
     }
 
     const { name, rating, message } = req.body;
+    const cleanName = normalizeText(name);
+    const cleanMessage = normalizeText(message);
+    const parsedRating = Number.parseInt(rating, 10);
 
-    if (!name || !rating || !message) return res.status(400).json({ error: 'Name, rating, and message are required.' });
-    if (rating < 1 || rating > 5) return res.status(400).json({ error: 'Rating must be between 1 and 5.' });
-    if (message.trim().length < 10) return res.status(400).json({ error: 'Review message must be at least 10 characters.' });
+    if (!cleanName || !rating || !cleanMessage) return res.status(400).json({ error: 'Name, rating, and message are required.' });
+    if (!Number.isInteger(parsedRating) || parsedRating < 1 || parsedRating > 5) return res.status(400).json({ error: 'Rating must be between 1 and 5.' });
+    if (cleanMessage.length < 10) return res.status(400).json({ error: 'Review message must be at least 10 characters.' });
 
     try {
         const db = getSupabaseAdmin();
         const { data, error } = await db
             .from('reviews')
-            .insert({ name: name.trim(), rating: parseInt(rating), message: message.trim(), approved: true })
+            .insert({ name: cleanName, rating: parsedRating, message: cleanMessage, approved: true })
             .select('id, name, rating')
             .single();
 

@@ -6,6 +6,12 @@ const { connectDB } = require('./config/db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const NODE_ENV = process.env.NODE_ENV || 'development';
+
+const allowedOrigins = (process.env.CORS_ORIGIN || '*')
+    .split(',')
+    .map(origin => origin.trim())
+    .filter(Boolean);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Connect to MongoDB (non-blocking — falls back to in-memory if not configured)
@@ -16,7 +22,8 @@ connectDB();
 // Middleware
 // ─────────────────────────────────────────────────────────────────────────────
 app.use(cors({
-    origin: '*',
+    origin: allowedOrigins.includes('*') ? '*' : allowedOrigins,
+    credentials: !allowedOrigins.includes('*'),
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
@@ -68,7 +75,10 @@ app.get(/^(?!\/api).*$/, (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 app.use((err, req, res, next) => {
     console.error('Unhandled error:', err);
-    res.status(500).json({ error: 'An unexpected server error occurred.' });
+    const message = NODE_ENV === 'production'
+        ? 'An unexpected server error occurred.'
+        : (err?.message || 'An unexpected server error occurred.');
+    res.status(500).json({ error: message });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

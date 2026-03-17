@@ -4,9 +4,8 @@ const { getSupabaseAdmin, isConnected } = require('../config/supabase');
 const { protect, authorize } = require('../middleware/auth');
 
 const genAppointmentId = () => `APT-${Math.floor(10000 + Math.random() * 90000)}`;
+const normalizeText = (value = '') => String(value).trim();
 
-// ─────────────────────────────────────────────────────────────────────────────
-// GET /api/appointments (List all for doctor dashboard)
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/appointments (List all for doctor dashboard)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -32,17 +31,31 @@ router.get('/', protect, authorize('doctor'), async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/appointments
 // ─────────────────────────────────────────────────────────────────────────────
-// POST /api/appointments
-// ─────────────────────────────────────────────────────────────────────────────
 router.post('/', protect, async (req, res) => {
     if (!isConnected()) {
         return res.status(503).json({ error: 'Database connection not available.' });
     }
 
     const { doctorId, patientName, patientAge, patientSex, symptoms, appointmentDate, appointmentTime } = req.body;
+    const cleanDoctorId = normalizeText(doctorId);
+    const cleanPatientName = normalizeText(patientName);
+    const cleanPatientSex = normalizeText(patientSex);
+    const cleanSymptoms = normalizeText(symptoms);
+    const cleanAppointmentTime = normalizeText(appointmentTime);
+    const parsedAge = Number.parseInt(patientAge, 10);
+    const parsedDate = new Date(appointmentDate);
+    const cleanAppointmentDate = Number.isNaN(parsedDate.getTime())
+        ? null
+        : parsedDate.toISOString().split('T')[0];
 
-    if (!doctorId || !patientName || !patientAge || !patientSex || !symptoms || !appointmentDate || !appointmentTime) {
+    if (!cleanDoctorId || !cleanPatientName || !patientAge || !cleanPatientSex || !cleanSymptoms || !appointmentDate || !cleanAppointmentTime) {
         return res.status(400).json({ error: 'All appointment fields are required.' });
+    }
+    if (!Number.isInteger(parsedAge) || parsedAge < 1 || parsedAge > 120) {
+        return res.status(400).json({ error: 'Patient age must be a valid number between 1 and 120.' });
+    }
+    if (!cleanAppointmentDate) {
+        return res.status(400).json({ error: 'Appointment date is invalid.' });
     }
 
     try {
@@ -53,7 +66,7 @@ router.post('/', protect, async (req, res) => {
             .from('users')
             .select('id, name, specialization, fee')
             .eq('role', 'doctor')
-            .eq('id', doctorId)
+            .eq('id', cleanDoctorId)
             .maybeSingle();
 
         if (docError) throw docError;
@@ -66,14 +79,14 @@ router.post('/', protect, async (req, res) => {
             .from('appointments')
             .insert({
                 appointment_id: appointmentId,
-                doctor_id: doctorId,
+                doctor_id: cleanDoctorId,
                 doctor_name: doctor.name,
-                patient_name: patientName,
-                patient_age: parseInt(patientAge),
-                patient_sex: patientSex,
-                symptoms,
-                appointment_date: new Date(appointmentDate).toISOString().split('T')[0],
-                appointment_time: appointmentTime,
+                patient_name: cleanPatientName,
+                patient_age: parsedAge,
+                patient_sex: cleanPatientSex,
+                symptoms: cleanSymptoms,
+                appointment_date: cleanAppointmentDate,
+                appointment_time: cleanAppointmentTime,
                 consultation_fee: doctor.fee || 500, // Handle missing/null fee gracefully
                 status: 'confirmed',
                 user_id: req.user?.id || null

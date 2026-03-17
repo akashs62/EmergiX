@@ -1,10 +1,16 @@
 const jwt = require('jsonwebtoken');
+const NODE_ENV = process.env.NODE_ENV || 'development';
+const JWT_SECRET = process.env.JWT_SECRET || 'emergix-default-secret';
 
 /**
  * Middleware to protect routes requiring authentication.
  * Reads the Bearer token from the Authorization header.
  */
 const protect = (req, res, next) => {
+    if (NODE_ENV === 'production' && JWT_SECRET === 'emergix-default-secret') {
+        return res.status(500).json({ error: 'Server auth is not configured securely.' });
+    }
+
     let token;
 
     const authHeader = req.headers.authorization;
@@ -17,7 +23,7 @@ const protect = (req, res, next) => {
     }
 
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'emergix-default-secret');
+        const decoded = jwt.verify(token, JWT_SECRET);
         req.user = decoded;
         next();
     } catch (err) {

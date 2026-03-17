@@ -53,25 +53,30 @@ body::after {
 
 /* ---- TOKENS ---- */
 :root {
-    --teal: #27AE60;
+    --teal: #22c969;
+    --teal-dark: #1a9e52;
     --blue: #2B7FFF;
+    --blue-dark: #1a62db;
     --red: #FF4D4F;
     --bg: #F5F7FA;
     --white: #FFFFFF;
-    --dark: #0F172A;
+    --dark: #0A1628;
     --text: #1E293B;
     --muted: #64748B;
     --border: #E2E8F0;
-    --grad-brand: linear-gradient(135deg, #27AE60, #2B7FFF);
-    --grad-hero: linear-gradient(135deg, #27AE60 0%, #2B7FFF 100%);
-    --grad-footer: linear-gradient(135deg, #0F172A 0%, #1a3a7a 100%);
-    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
-    --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.09);
-    --shadow-lg: 0 10px 40px rgba(43, 127, 255, 0.12);
-    --radius: 16px;
-    --radius-sm: 10px;
-    --radius-xl: 24px;
+    --grad-brand: linear-gradient(135deg, #1EB85A 0%, #2B7FFF 100%);
+    --grad-brand-2: linear-gradient(135deg, #0d5c38 0%, #1a3a7a 100%);
+    --grad-hero: linear-gradient(135deg, #17916b 0%, #2368f6 60%, #143f96 100%);
+    --grad-footer: linear-gradient(160deg, #06101f 0%, #0c2250 50%, #051a10 100%);
+    --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.06);
+    --shadow-md: 0 6px 24px rgba(0, 0, 0, 0.09);
+    --shadow-lg: 0 16px 48px rgba(43, 127, 255, 0.14);
+    --shadow-xl: 0 28px 72px rgba(15, 23, 42, 0.18);
+    --radius: 18px;
+    --radius-sm: 12px;
+    --radius-xl: 28px;
     --transition: 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-spring: 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* ---- SELECTION ---- */
@@ -195,15 +200,17 @@ body::after {
     left: 0;
     right: 0;
     z-index: 1000;
-    background: rgba(255, 255, 255, 0.84);
+    background: rgba(255, 255, 255, 0.88);
     border-bottom: 1px solid transparent;
-    transition: border-color var(--transition), box-shadow var(--transition);
-    backdrop-filter: blur(18px);
+    transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
+    backdrop-filter: blur(22px) saturate(1.8);
+    -webkit-backdrop-filter: blur(22px) saturate(1.8);
 }
 
 .navbar.scrolled {
-    border-color: rgba(148, 163, 184, 0.28);
-    box-shadow: 0 12px 38px rgba(15, 23, 42, 0.08);
+    background: rgba(255, 255, 255, 0.95);
+    border-color: rgba(148, 163, 184, 0.22);
+    box-shadow: 0 4px 30px rgba(15, 23, 42, 0.07), 0 1px 3px rgba(15,23,42,0.04);
 }
 
 .nav-inner {
@@ -299,16 +306,18 @@ body::after {
     background: var(--grad-brand);
     color: white;
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 700;
     cursor: pointer;
     font-family: inherit;
     transition: all var(--transition);
-    box-shadow: 0 2px 10px rgba(43, 127, 255, 0.25);
+    box-shadow: 0 3px 12px rgba(43, 127, 255, 0.3);
+    letter-spacing: 0.01em;
 }
 
 .btn-signin:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 18px rgba(43, 127, 255, 0.38);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 22px rgba(43, 127, 255, 0.45);
+    filter: brightness(1.05);
 }
 
 .hamburger {
@@ -337,11 +346,12 @@ body::after {
     position: relative;
     padding: 140px 24px 0;
     background:
-        radial-gradient(circle at top left, rgba(255, 255, 255, 0.24), transparent 32%),
-        radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.18), transparent 26%),
-        linear-gradient(135deg, #17916b 0%, #2368f6 55%, #143f96 100%);
+        radial-gradient(ellipse at 15% 60%, rgba(34,201,105,0.22), transparent 45%),
+        radial-gradient(ellipse at 85% 30%, rgba(43,127,255,0.25), transparent 45%),
+        radial-gradient(circle at top center, rgba(255,255,255,0.12), transparent 40%),
+        linear-gradient(150deg, #0d5c38 0%, #1a7a50 25%, #1c4fa3 65%, #0f3080 100%);
     overflow: hidden;
-    min-height: 720px;
+    min-height: 740px;
 }
 
 /* Subtle medical cross pattern */
@@ -837,29 +847,55 @@ body::after {
    STATS
    ============================================================ */
 .stats-section {
-    padding: 60px 0 80px;
+    padding: 64px 0 96px;
     background: #F5F7FA;
+    position: relative;
+}
+
+.stats-section::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 0%, rgba(39,174,96,0.05), transparent 60%);
+    pointer-events: none;
 }
 
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 20px;
+    gap: 22px;
+    position: relative;
 }
 
 .stat-card {
     background: #fff;
     border-radius: var(--radius);
-    padding: 28px 24px;
+    padding: 30px 24px;
     text-align: center;
-    box-shadow: var(--shadow-md);
-    border: 1px solid #EEF2F7;
-    transition: all var(--transition);
+    box-shadow: 0 4px 20px rgba(15,23,42,0.07), 0 1px 4px rgba(15,23,42,0.04);
+    border: 1px solid rgba(226,232,240,0.8);
+    transition: all var(--transition-spring);
+    position: relative;
+    overflow: hidden;
 }
 
+.stat-card::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--grad-brand);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.4s var(--transition-spring);
+}
+
+.stat-card:hover::after { transform: scaleX(1); }
+
 .stat-card:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-lg);
+    transform: translateY(-6px);
+    box-shadow: 0 20px 50px rgba(43,127,255,0.14), 0 4px 16px rgba(43,127,255,0.06);
+    border-color: rgba(43,127,255,0.15);
 }
 
 .stat-icon-wrap {
@@ -929,8 +965,9 @@ body::after {
    SERVICES
    ============================================================ */
 .services {
-    padding: 80px 0 100px;
-    background: #F5F7FA;
+    padding: 88px 0 108px;
+    background: linear-gradient(180deg, #FFFFFF 0%, #F5F7FA 100%);
+    border-top: 1px solid rgba(226,232,240,0.6);
 }
 
 .services-grid {
@@ -1266,8 +1303,8 @@ body::after {
    EMERGENCY BANNER
    ============================================================ */
 .em-banner {
-    background: var(--grad-hero);
-    padding: 48px 24px;
+    background: linear-gradient(135deg, #0d5c38 0%, #1a4fa3 50%, #0f3080 100%);
+    padding: 60px 24px;
     position: relative;
     overflow: hidden;
 }
@@ -1276,9 +1313,10 @@ body::after {
     content: '';
     position: absolute;
     inset: 0;
-    background-image:
-        repeating-linear-gradient(0deg, transparent, transparent 30px, rgba(255, 255, 255, 0.03) 30px, rgba(255, 255, 255, 0.03) 31px),
-        repeating-linear-gradient(90deg, transparent, transparent 30px, rgba(255, 255, 255, 0.03) 30px, rgba(255, 255, 255, 0.03) 31px);
+    background:
+        radial-gradient(ellipse at 20% 50%, rgba(34,201,105,0.2), transparent 50%),
+        radial-gradient(ellipse at 80% 50%, rgba(43,127,255,0.2), transparent 50%);
+    pointer-events: none;
 }
 
 .em-banner-inner {
@@ -1529,6 +1567,15 @@ body::after {
    ============================================================ */
 .footer {
     background: var(--grad-footer);
+    position: relative;
+}
+
+.footer::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(30,184,96,0.4), rgba(43,127,255,0.4), transparent);
 }
 
 .footer-top {

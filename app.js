@@ -4,7 +4,7 @@
    EmergiX — Interactive JavaScript
    ============================================================ */
 
-const API_Base = window.location.origin.includes('localhost:3000') ? '' : 'http://localhost:3000';
+const API_Base = window.EmergiXConfig ? window.EmergiXConfig.API_BASE_URL : '';
 
 /* ---- AUTH STATE CHECK ---- */
 document.addEventListener('DOMContentLoaded', () => {
@@ -41,32 +41,38 @@ const navbar = document.getElementById('navbar');
 const scrollTopBtn = document.getElementById('scrollTop');
 
 window.addEventListener('scroll', () => {
-    navbar.classList.toggle('scrolled', window.scrollY > 60);
-    scrollTopBtn.classList.toggle('show', window.scrollY > 400);
+    if (navbar) navbar.classList.toggle('scrolled', window.scrollY > 60);
+    if (scrollTopBtn) scrollTopBtn.classList.toggle('show', window.scrollY > 400);
 }, { passive: true });
 
-scrollTopBtn.addEventListener('click', () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-});
+if (scrollTopBtn) {
+    scrollTopBtn.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+}
 
 /* ---- HAMBURGER ---- */
 const hamburger = document.getElementById('hamburger');
 const navLinks = document.getElementById('navLinks');
 
-hamburger.addEventListener('click', () => {
-    const isOpen = navLinks.classList.toggle('mob-open');
-    hamburger.setAttribute('aria-expanded', isOpen);
-    hamburger.classList.toggle('is-open', isOpen);
-});
+if (hamburger && navLinks) {
+    hamburger.addEventListener('click', () => {
+        const isOpen = navLinks.classList.toggle('mob-open');
+        hamburger.setAttribute('aria-expanded', isOpen);
+        hamburger.classList.toggle('is-open', isOpen);
+    });
+}
 
 // Close mobile nav on link click
-navLinks.querySelectorAll('.nav-link').forEach(l =>
-    l.addEventListener('click', () => {
-        navLinks.classList.remove('mob-open');
-        hamburger.classList.remove('is-open');
-        hamburger.setAttribute('aria-expanded', 'false');
-    })
-);
+if (navLinks && hamburger) {
+    navLinks.querySelectorAll('.nav-link').forEach(l =>
+        l.addEventListener('click', () => {
+            navLinks.classList.remove('mob-open');
+            hamburger.classList.remove('is-open');
+            hamburger.setAttribute('aria-expanded', 'false');
+        })
+    );
+}
 
 // Mobile nav inject styles once
 (function injectMobileNav() {

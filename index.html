@@ -10,9 +10,35 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-        href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,700&family=Inter:wght@400;500;600;700&display=swap"
         rel="stylesheet" />
     <link rel="stylesheet" href="style.css" />
+    <style>
+        /* Landing-page-specific premium refinements */
+        .hero-title-accent {
+            display: block;
+            background: linear-gradient(90deg, #a7f3c0, #60c5ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .section-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .section-tag::before {
+            content: '';
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--teal);
+        }
+        .hero-wave path { fill: #F5F7FA; }
+        .nav-link { font-size: 14px; }
+    </style>
+    <script src="config.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 </head>
@@ -47,8 +73,7 @@
                     1800-EMERGIX
                 </a>
                 <div id="auth-header-container">
-                    <a href="signup.html" id="btn-header-auth" class="btn-signin" style="text-decoration:none;">Create
-                        Account / Sign In</a>
+                    <a href="signup.html" id="btn-header-auth" class="btn-signin" style="text-decoration:none;">Sign In / Register</a>
                 </div>
                 <button class="hamburger" id="hamburger" aria-label="Toggle menu" aria-expanded="false">
                     <span></span><span></span><span></span>
@@ -70,7 +95,7 @@
                 </div>
                 <h1 class="hero-title">
                     Every second.
-                    Every route.
+                    <span class="hero-title-accent">Every route.</span>
                     Every life.
                 </h1>
                 <p class="hero-subtitle">

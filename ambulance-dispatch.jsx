@@ -1,5 +1,5 @@
 const { useState, useEffect } = React;
-const API_Base = window.location.origin.includes('localhost:3000') ? '' : 'http://localhost:3000';
+const API_Base = window.EmergiXConfig ? window.EmergiXConfig.API_BASE_URL : '';
 
 // --- Mock Data ---
 const EMERGENCY_TYPES = [
