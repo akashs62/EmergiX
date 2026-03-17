@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { isConnected, getSupabaseAdmin } = require('../config/supabase');
+const { protect, authorize } = require('../middleware/auth');
 
 const genBookingId = () => `EMG-${Math.floor(10000 + Math.random() * 90000)}`;
 const genVehicleId = (type) => `${type}-${Math.floor(100 + Math.random() * 900)}`;
@@ -8,7 +9,9 @@ const genVehicleId = (type) => `${type}-${Math.floor(100 + Math.random() * 900)}
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/bookings (List all for admin/fleet)
 // ─────────────────────────────────────────────────────────────────────────────
-router.get('/', async (req, res) => {
+// GET /api/bookings (List all for admin/fleet)
+// ─────────────────────────────────────────────────────────────────────────────
+router.get('/', protect, authorize('ambulance'), async (req, res) => {
     if (!isConnected()) {
         return res.status(503).json({ error: 'Database connection not available.' });
     }

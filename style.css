@@ -2124,3 +2124,34 @@ body::after {
         justify-content: center;
     }
 }
+
+/* ============================================================
+   MAP & MARKER STYLES (LEAFLET)
+   ============================================================ */
+.emergi-marker {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto !important;
+}
+
+@keyframes pulseRing {
+    0% { transform: scale(0.5); opacity: 0; }
+    50% { opacity: 0.5; }
+    100% { transform: scale(1.5); opacity: 0; }
+}
+
+.leaflet-popup-content-wrapper {
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    font-family: 'Poppins', sans-serif;
+    padding: 2px;
+}
+
+.leaflet-popup-tip {
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+}
+
+.leaflet-container {
+    background: #f8fafc;
+}

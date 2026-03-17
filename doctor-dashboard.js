@@ -1,6 +1,7 @@
-// =============================================
 // EmergiX Doctor Dashboard — Functional Logic (Live Data)
 // =============================================
+
+const API_Base = window.location.origin.includes('localhost:3000') ? '' : 'http://localhost:3000';
 
 // ── Data Store ──
 const DB = {
@@ -44,7 +45,10 @@ async function initDashboard() {
 // ── Fetch Logic ──
 async function fetchLiveAppointments() {
     try {
-        const response = await fetch('/api/appointments');
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_Base}/api/appointments`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
         const result = await response.json();
         if (result.status === 'success') {
             // Map backend appointments to frontend format

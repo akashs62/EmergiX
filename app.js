@@ -4,6 +4,8 @@
    EmergiX — Interactive JavaScript
    ============================================================ */
 
+const API_Base = window.location.origin.includes('localhost:3000') ? '' : 'http://localhost:3000';
+
 /* ---- AUTH STATE CHECK ---- */
 document.addEventListener('DOMContentLoaded', () => {
     const authHeaderContainer = document.getElementById('auth-header-container');
@@ -16,11 +18,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         authHeaderContainer.innerHTML = `
             <div style="display: flex; align-items: center; gap: 12px;">
-                <span style="color: #fff; font-weight: 500; font-size: 14px; opacity: 0.9;">
-                    Hi, <strong style="color: #27AE60;">${username}</strong>
+                <span style="color: #2B7FFF; font-weight: 600; font-size: 14px;">
+                    Hi, <strong style="color: #2B7FFF;">${username}</strong>
                 </span>
-                <button onclick="logout()" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-family: inherit; font-size: 13px; transition: all 0.2s;"
-                onmouseover="this.style.background='rgba(231, 76, 60, 0.8)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">
+                <button onclick="logout()" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #EF4444; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 600; transition: all 0.2s;"
+                onmouseover="this.style.background='rgba(239, 68, 68, 0.2)'; this.style.color='#DC2626'" onmouseout="this.style.background='rgba(239, 68, 68, 0.1)'; this.style.color='#EF4444'">
                     Logout
                 </button>
             </div>
@@ -196,7 +198,7 @@ window.handleSignin = function (e) {
    ============================================================ */
 async function fetchStats() {
     try {
-        const response = await fetch('/api/stats');
+        const response = await fetch(`${API_Base}/api/stats`);
         const result = await response.json();
         if (result.status === 'success') {
             const d = result.data;
@@ -237,7 +239,7 @@ async function fetchReviews() {
     if (!container) return;
 
     try {
-        const response = await fetch('/api/reviews');
+        const response = await fetch(`${API_Base}/api/reviews`);
         const result = await response.json();
         if (result.status === 'success' && result.data.length > 0) {
             container.innerHTML = result.data.map(rev => `
@@ -280,9 +282,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 btn.innerText = 'Submitting...';
                 btn.disabled = true;
 
-                const response = await fetch('/api/reviews', {
+                const token = localStorage.getItem('token');
+                const response = await fetch(`${API_Base}/api/reviews`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
                     body: JSON.stringify({ name, rating, message })
                 });
 
@@ -445,7 +451,7 @@ window.toggleFaq = function (id) {
 };
 
 /* ============================================================
-   LEAFLET MAP — Live Tracking Visualization
+   LEAFLET MAP — Live Tracking & Nearby Hospitals
    ============================================================ */
 let map;
 let ambMarker;
@@ -453,47 +459,113 @@ let isDispatchActive = false;
 let ambRoute = [];
 let ambProgress = 0;
 let routeLine;
+let userLatLng = [22.57286, 88.36401]; // Default: Kolkata [lat, lng]
 
-function initMap() {
-    if (map) return; // already initialized
+/* ── Fetch real nearby hospitals from OpenStreetMap Overpass API ── */
+async function fetchNearbyHospitals(lat, lng, radiusMeters = 5000) {
+    const query = `
+        [out:json][timeout:10];
+        (
+          node["amenity"="hospital"](around:${radiusMeters},${lat},${lng});
+          way["amenity"="hospital"](around:${radiusMeters},${lat},${lng});
+        );
+        out center 15;
+    `;
+    try {
+        const res = await fetch('https://overpass-api.de/api/interpreter', {
+            method: 'POST',
+            body: 'data=' + encodeURIComponent(query)
+        });
+        const data = await res.json();
+        return data.elements.map(el => ({
+            name: el.tags?.name || 'Hospital',
+            lat: el.lat || el.center?.lat,
+            lng: el.lon || el.center?.lon
+        })).filter(h => h.lat && h.lng).slice(0, 10);
+    } catch (e) {
+        console.warn('Overpass API failed, using fallback hospitals.', e);
+        return null;
+    }
+}
 
-    // Default center (e.g., Kolkata as placeholder)
-    const patientLatLng = [22.57286, 88.36401];
-    const hospitalLatLng = [22.58515, 88.37505];
+/* ── Init ── */
+async function initMap() {
+    if (map) return;
 
-    map = L.map('mapCanvas').setView(patientLatLng, 14);
+    // Request user location
+    if ('geolocation' in navigator) {
+        try {
+            const pos = await new Promise((resolve, reject) =>
+                navigator.geolocation.getCurrentPosition(resolve, reject, {
+                    enableHighAccuracy: true, timeout: 8000, maximumAge: 0
+                })
+            );
+            userLatLng = [pos.coords.latitude, pos.coords.longitude];
+        } catch (e) {
+            console.warn('Location access denied or timed out, using default.', e);
+        }
+    }
+
+    setupMap(userLatLng);
+}
+
+/* ── Build the Leaflet map ── */
+async function setupMap(center) {
+    if (map) return;
+
+    map = L.map('mapCanvas').setView(center, 14);
 
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
         subdomains: 'abcd',
-        maxZoom: 20
+        maxZoom: 19
     }).addTo(map);
 
-    // Initial markers
-    const patientIcon = L.divIcon({
-        className: 'custom-pin',
-        html: `<div style="background:#FF4D4F; color:#fff; width:24px; height:24px; border-radius:50%; text-align:center; line-height:24px; font-weight:bold; box-shadow:0 0 10px rgba(255,77,79,0.5);">!</div>`,
-        iconSize: [24, 24],
-        iconAnchor: [12, 12]
+    // ── User marker (pulsing red dot) ──
+    const userIcon = L.divIcon({
+        className: 'emergi-marker',
+        html: `<div style="position:relative;">
+            <div style="background:#FF4D4F; width:18px; height:18px; border-radius:50%; border:3px solid #fff; box-shadow:0 0 12px rgba(255,77,79,0.6);"></div>
+            <div style="position:absolute; top:-6px; left:-6px; width:30px; height:30px; border-radius:50%; border:2px solid #FF4D4F; opacity:0.4; animation:pulseRing 2s infinite;"></div>
+        </div>`,
+        iconSize: [18, 18],
+        iconAnchor: [9, 9]
+    });
+    L.marker(center, { icon: userIcon, zIndexOffset: 900 })
+        .addTo(map)
+        .bindPopup('<strong>📍 Your Location</strong>');
+
+    // ── Nearby hospitals (real data from Overpass, with fallback) ──
+    let hospitals = await fetchNearbyHospitals(center[0], center[1]);
+
+    if (!hospitals || hospitals.length === 0) {
+        hospitals = [
+            { name: 'Apollo Hospital', lat: center[0] + 0.012, lng: center[1] + 0.011 },
+            { name: 'City Trust General', lat: center[0] - 0.009, lng: center[1] - 0.008 },
+            { name: 'Metro Heart Institute', lat: center[0] + 0.005, lng: center[1] - 0.014 }
+        ];
+    }
+
+    const hospIcon = L.divIcon({
+        className: 'emergi-marker',
+        html: `<div style="background:#2B7FFF; color:#fff; width:30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:16px; border:2px solid #fff; box-shadow:0 4px 12px rgba(43,127,255,0.4); cursor:pointer;">🏥</div>`,
+        iconSize: [30, 30],
+        iconAnchor: [15, 15]
     });
 
-    const hospitalIcon = L.divIcon({
-        className: 'custom-pin',
-        html: `<div style="background:#2B7FFF; color:#fff; width:28px; height:28px; border-radius:50%; text-align:center; line-height:28px; font-weight:bold; box-shadow:0 0 10px rgba(43,127,255,0.5);">H</div>`,
-        iconSize: [28, 28],
-        iconAnchor: [14, 14]
+    hospitals.forEach(h => {
+        L.marker([h.lat, h.lng], { icon: hospIcon })
+            .addTo(map)
+            .bindPopup(`<strong>${h.name}</strong>`);
     });
 
-    L.marker(patientLatLng, { icon: patientIcon }).addTo(map).bindPopup('Your Location');
-    L.marker(hospitalLatLng, { icon: hospitalIcon }).addTo(map).bindPopup('Apollo Hospital');
-
-    // Generating a dummy route between patient and hospital
+    // ── Ambulance route (from nearby point toward user) ──
+    const ambStart = [center[0] - 0.013, center[1] - 0.009];
     ambRoute = [
-        patientLatLng,
-        [22.57367, 88.36581],
-        [22.57703, 88.36409],
-        [22.58571, 88.36753],
-        hospitalLatLng
+        ambStart,
+        [center[0] - 0.007, center[1] - 0.005],
+        [center[0] - 0.003, center[1] - 0.002],
+        center
     ];
 
     routeLine = L.polyline(ambRoute, {
@@ -504,46 +576,44 @@ function initMap() {
     }).addTo(map);
 
     const ambIcon = L.divIcon({
-        className: 'custom-amb-pin',
-        html: `<div style="background:#2EC4B6; color:#fff; width:36px; height:26px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:16px; box-shadow:0 0 12px rgba(46,196,182,0.6);">🚑</div>`,
-        iconSize: [36, 26],
-        iconAnchor: [18, 13]
+        className: 'emergi-marker',
+        html: `<div style="background:#2EC4B6; color:#fff; width:40px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:17px; border:2px solid #fff; box-shadow:0 4px 14px rgba(46,196,182,0.55);">🚑</div>`,
+        iconSize: [40, 28],
+        iconAnchor: [20, 14]
     });
 
-    // Start ambulance at patient loc
-    ambMarker = L.marker(patientLatLng, { icon: ambIcon, zIndexOffset: 1000 }).addTo(map);
+    ambMarker = L.marker(ambStart, { icon: ambIcon, zIndexOffset: 1000 }).addTo(map);
 }
 
+/* ── Live tracking trigger ── */
 function startLiveTracking() {
+    if (!map || isDispatchActive) return;
     isDispatchActive = true;
     ambProgress = 0;
 
-    // Scroll to tracking section
     const trackingSection = document.getElementById('hospitals');
-    if (trackingSection) {
-        trackingSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
+    if (trackingSection) trackingSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-    // Invalidate size to ensure rendering if hidden earlier
     if (map) map.invalidateSize();
 
-    // Update live chips UI
     const chipAmb = document.querySelector('.chip-amb .chip-sub');
     if (chipAmb) chipAmb.textContent = 'En route · ETA 4 min';
 
     animateAmbulance();
 }
 
+/* ── Smooth ambulance animation ── */
 function animateAmbulance() {
     if (!isDispatchActive) return;
 
     if (ambProgress < ambRoute.length - 1) {
-        ambProgress += 0.05; // Animation speed
+        ambProgress += 0.008;
         const index = Math.floor(ambProgress);
 
         if (index >= ambRoute.length - 1) {
             ambMarker.setLatLng(ambRoute[ambRoute.length - 1]);
-            showToast('✅ Ambulance has arrived at the hospital!', 'success');
+            showToast('✅ Ambulance has arrived!', 'success');
+            isDispatchActive = false;
             return;
         }
 
@@ -556,12 +626,13 @@ function animateAmbulance() {
 
         ambMarker.setLatLng([lat, lng]);
 
-        requestAnimationFrame(() => setTimeout(animateAmbulance, 60));
+        requestAnimationFrame(animateAmbulance);
     }
 }
 
 // Init map on load
 window.addEventListener('load', initMap);
+
 
 /* ============================================================
    SERVICE CARD TILT ON HOVER

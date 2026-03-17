@@ -1,6 +1,7 @@
-// =============================================
 // EmergiX Ambulance Dashboard — Functional Logic (Live Data)
 // =============================================
+
+const API_Base = window.location.origin.includes('localhost:3000') ? '' : 'http://localhost:3000';
 
 // ── Data Store ──
 const DB = {
@@ -39,7 +40,10 @@ async function initDashboard() {
 // ── Fetch Logic ──
 async function fetchLiveDispatches() {
     try {
-        const response = await fetch('/api/bookings');
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_Base}/api/bookings`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
         const result = await response.json();
         if (result.status === 'success') {
             DB.dispatches = result.data.map(d => ({

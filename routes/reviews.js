@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { isConnected, getSupabaseAdmin } = require('../config/supabase');
+const { protect } = require('../middleware/auth');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/reviews
@@ -30,7 +31,9 @@ router.get('/', async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/reviews
 // ─────────────────────────────────────────────────────────────────────────────
-router.post('/', async (req, res) => {
+// POST /api/reviews
+// ─────────────────────────────────────────────────────────────────────────────
+router.post('/', protect, async (req, res) => {
     if (!isConnected()) {
         return res.status(503).json({ error: 'Database connection not available.' });
     }

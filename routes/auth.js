@@ -7,6 +7,7 @@ const { getSupabaseAdmin } = require('../config/supabase');
 
 // ── In-memory store (when Supabase is not configured) ─────────────────────────
 const memUsers = [];
+const memOTPs = new Map(); // Store OTPs: email -> { otp, expires, verified }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -232,6 +233,159 @@ router.post('/ambulance/signin', async (req, res) => {
     } catch (err) {
         console.error('Ambulance signin error:', err);
         res.status(500).json({ error: 'Server error. Please try again.' });
+    }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /api/auth/request-otp
+// ─────────────────────────────────────────────────────────────────────────────
+router.post('/request-otp', async (req, res) => {
+    const { email, role } = req.body;
+    if (!email || !role) return res.status(400).json({ error: 'Email and role are required.' });
+
+    try {
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const expires = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
+
+        if (isDBConnected()) {
+            const db = getSupabaseAdmin();
+            
+            // Check if user exists
+            const { data: user } = await db.from('users').select('id').eq('email', email.toLowerCase()).eq('role', role).maybeSingle();
+            if (!user) return res.status(404).json({ error: 'No account found with this email and role.' });
+
+            // Store OTP in database (optional, but let's use in-memory for speed/simplicity since schema doesn't have it)
+            // If we want real persistence, we'd need an otps table.
+            memOTPs.set(`${email}:${role}`, { otp, expires, verified: false });
+        } else {
+            const user = memUsers.find(u => u.email === email.toLowerCase() && u.role === role);
+            if (!user) return res.status(404).json({ error: 'No account found with this email and role.' });
+            memOTPs.set(`${email}:${role}`, { otp, expires, verified: false });
+        }
+
+        console.log(`\n[OTP DEBUG] OTP for ${email} (${role}): ${otp}\n`);
+        
+        // In a real app, send email here. For now, simulate.
+        res.status(200).json({ status: 'success', message: 'OTP sent to your email.' });
+    } catch (err) {
+        console.error('OTP request error:', err);
+        res.status(500).json({ error: 'Server error.' });
+    }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /api/auth/verify-otp
+// ─────────────────────────────────────────────────────────────────────────────
+router.post('/verify-otp', async (req, res) => {
+    const { email, role, otp } = req.body;
+    const stored = memOTPs.get(`${email}:${role}`);
+
+    if (!stored || stored.otp !== otp || new Date() > stored.expires) {
+        return res.status(400).json({ error: 'Invalid or expired OTP.' });
+    }
+
+    stored.verified = true;
+    res.status(200).json({ status: 'success', message: 'OTP verified.' });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /api/auth/reset-password
+// ─────────────────────────────────────────────────────────────────────────────
+router.post('/reset-password', async (req, res) => {
+    const { email, role, newPassword, otp } = req.body;
+    if (!email || !role || !newPassword || !otp) {
+        return res.status(400).json({ error: 'All fields are required.' });
+    }
+
+    const stored = memOTPs.get(`${email}:${role}`);
+    if (!stored || !stored.verified || stored.otp !== otp) {
+        return res.status(401).json({ error: 'OTP verification required.' });
+    }
+
+    try {
+        const passwordHash = await bcrypt.hash(newPassword, 12);
+
+        if (isDBConnected()) {
+            const db = getSupabaseAdmin();
+            const { data, error } = await db
+                .from('users')
+                .update({ password_hash: passwordHash })
+                .eq('email', email.toLowerCase())
+                .eq('role', role)
+                .select('id');
+
+            if (error) throw error;
+            memOTPs.delete(`${email}:${role}`);
+            return res.status(200).json({ status: 'success', message: 'Password updated.' });
+        } else {
+            const userIndex = memUsers.findIndex(u => u.email === email.toLowerCase() && u.role === role);
+            if (userIndex === -1) return res.status(404).json({ error: 'Account not found.' });
+            memUsers[userIndex].password_hash = passwordHash;
+            memOTPs.delete(`${email}:${role}`);
+            return res.status(200).json({ status: 'success', message: 'Password updated (In-memory).' });
+        }
+    } catch (err) {
+        console.error('Reset password error:', err);
+        res.status(500).json({ error: 'Server error.' });
+    }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /api/auth/google
+// ─────────────────────────────────────────────────────────────────────────────
+router.post('/google', async (req, res) => {
+    const { email, name, role } = req.body;
+    if (!email || !role) return res.status(400).json({ error: 'Email and role are required.' });
+
+    try {
+        if (isDBConnected()) {
+            const db = getSupabaseAdmin();
+            
+            // Check if user exists
+            let { data: user } = await db
+                .from('users')
+                .select('id, name, email, role')
+                .eq('email', email.toLowerCase())
+                .eq('role', role)
+                .maybeSingle();
+
+            // If user doesn't exist, create a mock one (since it's a social login demo)
+            if (!user) {
+                const { data: newUser, error } = await db
+                    .from('users')
+                    .insert({
+                        name: name || email.split('@')[0],
+                        email: email.toLowerCase(),
+                        password_hash: 'google_oauth_bypass',
+                        role: role
+                    })
+                    .select('id, name, email, role')
+                    .single();
+                
+                if (error) throw error;
+                user = newUser;
+            }
+
+            const token = signToken({ id: user.id, email: user.email, role: user.role, name: user.name });
+            return res.status(200).json({ status: 'success', token, user });
+        } else {
+            // In-memory fallback
+            let user = memUsers.find(u => u.email === email.toLowerCase() && u.role === role);
+            if (!user) {
+                user = {
+                    id: `google_${Date.now()}`,
+                    name: name || email.split('@')[0],
+                    email: email.toLowerCase(),
+                    role
+                };
+                memUsers.push(user);
+            }
+            const token = signToken({ id: user.id, email: user.email, role: user.role, name: user.name });
+            return res.status(200).json({ status: 'success', token, user });
+        }
+    } catch (err) {
+        console.error('Google auth error:', err);
+        res.status(500).json({ error: 'Server error during social login.' });
     }
 });
 

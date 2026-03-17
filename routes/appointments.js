@@ -1,13 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const { getSupabaseAdmin, isConnected } = require('../config/supabase');
+const { protect, authorize } = require('../middleware/auth');
 
 const genAppointmentId = () => `APT-${Math.floor(10000 + Math.random() * 90000)}`;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/appointments (List all for doctor dashboard)
 // ─────────────────────────────────────────────────────────────────────────────
-router.get('/', async (req, res) => {
+// GET /api/appointments (List all for doctor dashboard)
+// ─────────────────────────────────────────────────────────────────────────────
+router.get('/', protect, authorize('doctor'), async (req, res) => {
     if (!isConnected()) return res.status(503).json({ error: 'Database connection not available.' });
 
     try {
@@ -29,7 +32,9 @@ router.get('/', async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/appointments
 // ─────────────────────────────────────────────────────────────────────────────
-router.post('/', async (req, res) => {
+// POST /api/appointments
+// ─────────────────────────────────────────────────────────────────────────────
+router.post('/', protect, async (req, res) => {
     if (!isConnected()) {
         return res.status(503).json({ error: 'Database connection not available.' });
     }

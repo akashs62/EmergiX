@@ -1,4 +1,5 @@
 const { useState, useEffect } = React;
+const API_Base = window.location.origin.includes('localhost:3000') ? '' : 'http://localhost:3000';
 
 // --- Mock Data ---
 const EMERGENCY_TYPES = [
@@ -269,26 +270,25 @@ const TrackingScreen = ({ bookingData, onHome, onCancel }) => {
 
         let map;
         let ambMarker;
-        let intervalId;
+        let animationFrameId;
 
-        // Dummy coordinates for patient and ambulance initial location
-        const patientLatLng = [22.57286, 88.36401]; // Kolkata center
+        const patientLatLng = [22.57286, 88.36401]; // Kolkata center [lat, lng]
         const initialAmbLatLng = [22.55994, 88.35056];
 
         map = L.map('ambMapCanvas').setView(patientLatLng, 14);
 
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-            maxZoom: 20
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OSM &copy; CARTO',
+            maxZoom: 19
         }).addTo(map);
 
+        // Patient marker
         const patientIcon = L.divIcon({
-            className: 'custom-pin',
+            className: 'emergi-marker',
             html: `<div style="background:#FF4D4F; color:#fff; width:24px; height:24px; border-radius:50%; text-align:center; line-height:24px; font-weight:bold; box-shadow:0 0 10px rgba(255,77,79,0.5);">!</div>`,
             iconSize: [24, 24],
             iconAnchor: [12, 12]
         });
-
         L.marker(patientLatLng, { icon: patientIcon }).addTo(map).bindPopup('Your Location');
 
         const ambRoute = [
@@ -306,25 +306,24 @@ const TrackingScreen = ({ bookingData, onHome, onCancel }) => {
             opacity: 0.7
         }).addTo(map);
 
+        // Ambulance marker
         const ambIcon = L.divIcon({
-            className: 'custom-amb-pin',
+            className: 'emergi-marker',
             html: `<div style="background:#2EC4B6; color:#fff; width:36px; height:26px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:16px; box-shadow:0 0 12px rgba(46,196,182,0.6);">🚑</div>`,
             iconSize: [36, 26],
             iconAnchor: [18, 13]
         });
-
         ambMarker = L.marker(initialAmbLatLng, { icon: ambIcon, zIndexOffset: 1000 }).addTo(map);
 
         let progress = 0;
-        intervalId = setInterval(() => {
-            progress += 0.05;
+        const animate = () => {
+            progress += 0.008;
             const index = Math.floor(progress);
 
             if (index >= ambRoute.length - 1) {
                 ambMarker.setLatLng(ambRoute[ambRoute.length - 1]);
                 const etaEl = document.getElementById('ad-eta-display');
                 if (etaEl) etaEl.innerText = 'Arrived';
-                clearInterval(intervalId);
                 return;
             }
 
@@ -342,11 +341,15 @@ const TrackingScreen = ({ bookingData, onHome, onCancel }) => {
             if (etaEl && etaEl.innerText !== 'Arrived') {
                 etaEl.innerText = remaining + ' mins';
             }
-        }, 100);
+
+            animationFrameId = requestAnimationFrame(animate);
+        };
+
+        animate();
 
         return () => {
-            clearInterval(intervalId);
-            map.remove();
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            if (map) map.remove();
         };
     }, [showMap]);
 
@@ -429,9 +432,13 @@ const AmbulanceDispatchApp = () => {
 
     const createBooking = async (details) => {
         try {
-            const response = await fetch('/api/bookings', {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${API_Base}/api/bookings`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify(details)
             });
 

@@ -1,4 +1,5 @@
 const { useState, useEffect, useMemo } = React;
+const API_Base = window.location.origin.includes('localhost:3000') ? '' : 'http://localhost:3000';
 
 
 
@@ -15,7 +16,7 @@ const DoctorProfilePage = () => {
         const params = new URLSearchParams(window.location.search);
         const id = params.get('id');
         if (id) {
-            fetch(`/api/doctors/${id}`)
+            fetch(`${API_Base}/api/doctors/${id}`)
                 .then(res => res.json())
                 .then(data => {
                     if (data.status === 'success') {
@@ -333,9 +334,13 @@ const DoctorProfilePage = () => {
                                             onClick={async () => {
                                                 setBookingState('loading');
                                                 try {
-                                                    const res = await fetch('/api/appointments', {
+                                                    const token = localStorage.getItem('token');
+                                                    const res = await fetch(`${API_Base}/api/appointments`, {
                                                         method: 'POST',
-                                                        headers: { 'Content-Type': 'application/json' },
+                                                        headers: { 
+                                                            'Content-Type': 'application/json',
+                                                            'Authorization': `Bearer ${token}`
+                                                        },
                                                         body: JSON.stringify({
                                                             doctorId: doctor.id,
                                                             patientName: patientDetails.name,

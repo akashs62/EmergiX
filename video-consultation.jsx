@@ -1,4 +1,5 @@
 const { useState, useEffect, useMemo } = React;
+const API_Base = window.location.origin.includes('localhost:3000') ? '' : 'http://localhost:3000';
 
 const VideoConsultationPage = () => {
     const [doctors, setDoctors] = useState([]);
@@ -17,7 +18,7 @@ const VideoConsultationPage = () => {
     const [callTime, setCallTime] = useState(0);
 
     useEffect(() => {
-        fetch('/api/doctors')
+        fetch(`${API_Base}/api/doctors`)
             .then(res => res.json())
             .then(data => {
                 if (data.status === 'success') {
