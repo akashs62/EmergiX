@@ -6,17 +6,42 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>EmergiX — Every Second Counts in an Emergency</title>
     <meta name="description"
-        content="EmergiX coordinates your entire emergency care journey — rapid doctor triage, ambulance dispatch, and smart hospital routing. Request emergency help now." />
+        content="EmergiX coordinates your entire emergency care journey — rapid ambulance dispatch. Request emergency help now." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-        href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,700&family=Inter:wght@400;500;600;700&display=swap"
         rel="stylesheet" />
     <link rel="stylesheet" href="style.css" />
+    <style>
+        /* Landing-page-specific premium refinements */
+        .hero-title-accent {
+            display: block;
+            background: linear-gradient(90deg, #a7f3c0, #60c5ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .section-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .section-tag::before {
+            content: '';
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--teal);
+        }
+        .hero-wave path { fill: #F5F7FA; }
+        .nav-link { font-size: 14px; }
+    </style>
+    <script src="config.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 </head>
-
 <body>
 
     <!-- ============================= NAVBAR ============================= -->
@@ -32,7 +57,6 @@
             <!-- Center Links -->
             <ul class="nav-links" id="navLinks" role="list">
                 <li><a href="#services" class="nav-link">Services</a></li>
-                <li><a href="#how-it-works" class="nav-link">How It Works</a></li>
                 <li><a href="#hospitals" class="nav-link">Hospitals</a></li>
                 <li><a href="#testimonials" class="nav-link">Reviews</a></li>
                 <li><a href="#faq" class="nav-link">FAQ</a></li>
@@ -49,8 +73,7 @@
                     1800-EMERGIX
                 </a>
                 <div id="auth-header-container">
-                    <a href="signup.html" id="btn-header-auth" class="btn-signin" style="text-decoration:none;">Create
-                        Account / Sign In</a>
+                    <a href="signup.html" id="btn-header-auth" class="btn-signin" style="text-decoration:none;">Sign In / Register</a>
                 </div>
                 <button class="hamburger" id="hamburger" aria-label="Toggle menu" aria-expanded="false">
                     <span></span><span></span><span></span>
@@ -71,11 +94,12 @@
                     24/7 Emergency Response Active
                 </div>
                 <h1 class="hero-title">
-                    Time is life
+                    Every second.
+                    <span class="hero-title-accent">Every route.</span>
+                    Every life.
                 </h1>
                 <p class="hero-subtitle">
-                    Rapid doctor triage, ambulance dispatch, and capability-based hospital routing — all in one
-                    platform. Help arrives before hope fades.
+                    Dispatch emergency ambulances, connect with specialists, and coordinate care from the first alert to hospital handoff.
                 </p>
                 <div class="hero-ctas">
                     <button class="btn-emergency-hero" id="btnHeroEmergency">
@@ -86,13 +110,34 @@
                         </svg>
                         Request Emergency
                     </button>
-                    <a href="#how-it-works" class="btn-getstarted">
-                        Get Started
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                            <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2"
-                                stroke-linecap="round" stroke-linejoin="round" />
+                    <a href="video-consultation.html" class="btn-ghost-hero">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <rect x="2" y="3" width="20" height="14" rx="2" stroke="currentColor" stroke-width="2" />
+                            <path d="M8 21h8M12 17v4" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
                         </svg>
+                        Start Doctor Consult
                     </a>
+                </div>
+                <div class="hero-quick-actions" aria-label="Platform capabilities">
+                    <span>Dispatch triage in under 60 seconds</span>
+                    <span>Live tracking with family-safe updates</span>
+                </div>
+                <div class="hero-trust-grid" aria-label="Operational highlights">
+                    <div class="hero-trust-card">
+                        <span class="hero-trust-eyebrow">Coordination</span>
+                        <span class="hero-trust-value">24/7 active desk</span>
+                        <span class="hero-trust-note">Ambulance and doctor status in one flow.</span>
+                    </div>
+                    <div class="hero-trust-card">
+                        <span class="hero-trust-eyebrow">Coverage</span>
+                        <span class="hero-trust-value">Metro-ready routing</span>
+                        <span class="hero-trust-note">Simulated fleet and specialist availability across major zones.</span>
+                    </div>
+                    <div class="hero-trust-card">
+                        <span class="hero-trust-eyebrow">Escalation</span>
+                        <span class="hero-trust-value">Priority-aware dispatch</span>
+                        <span class="hero-trust-note">Critical cases are elevated instantly to advanced response.</span>
+                    </div>
                 </div>
 
             </div>
@@ -127,7 +172,7 @@
                     <div class="hfc-icon green">❤️</div>
                     <div>
                         <div class="hfc-num" id="heroLives">0</div>
-                        <div class="hfc-label">Lives Saved</div>
+                        <div class="hfc-label">Emergency Cases Coordinated</div>
                     </div>
                 </div>
 
@@ -143,7 +188,7 @@
                     <div class="hfc-icon teal">🏥</div>
                     <div>
                         <div class="hfc-num">0</div>
-                        <div class="hfc-label">Partner Hospitals</div>
+                        <div class="hfc-label">Verified Doctors</div>
                     </div>
                 </div>
 
@@ -185,7 +230,7 @@
     <section class="stats-section" id="stats" aria-label="Key statistics">
         <div class="container">
             <div class="stats-grid">
-                <div class="stat-card" data-count="0" aria-label="0 Lives Saved">
+                <div class="stat-card" data-count="0" aria-label="0 Specialist Doctors">
                     <div class="stat-icon-wrap" style="background:linear-gradient(135deg,#FF4D4F22,#FF4D4F11);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
                             <path
@@ -194,7 +239,7 @@
                         </svg>
                     </div>
                     <div class="stat-number" id="s-lives">0</div>
-                    <div class="stat-label">Lives Saved</div>
+                    <div class="stat-label">Specialist Doctors</div>
                 </div>
                 <div class="stat-card" data-count="0" aria-label="0 Ambulances">
                     <div class="stat-icon-wrap" style="background:linear-gradient(135deg,#27AE6022,#27AE6011);">
@@ -208,17 +253,16 @@
                     <div class="stat-number" id="s-amb">0</div>
                     <div class="stat-label">Ambulances</div>
                 </div>
-                <div class="stat-card" data-count="0" aria-label="0 Partner Hospitals">
-                    <div class="stat-icon-wrap" style="background:linear-gradient(135deg,#2B7FFF22,#2B7FFF11);">
+                <div class="stat-card" data-count="0.0" data-decimals="1" aria-label="0.0 Average Rating">
+                    <div class="stat-icon-wrap" style="background:linear-gradient(135deg,#F59E0B22,#F59E0B11);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-                            <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" stroke="#2B7FFF" stroke-width="2" />
-                            <polyline points="9 22 9 12 15 12 15 22" stroke="#2B7FFF" stroke-width="2" />
+                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="#F59E0B" />
                         </svg>
                     </div>
-                    <div class="stat-number" id="s-hosp">0</div>
-                    <div class="stat-label">Partner Hospitals</div>
+                    <div class="stat-number" id="s-rating">0.0</div>
+                    <div class="stat-label">Average Rating</div>
                 </div>
-                <div class="stat-card" data-count="0" aria-label="45+ Service Provider">
+                <div class="stat-card" data-count="0" aria-label="0 Cities Served">
                     <div class="stat-icon-wrap" style="background:linear-gradient(135deg,#7C3AED22,#7C3AED11);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
                             <circle cx="12" cy="12" r="10" stroke="#7C3AED" stroke-width="2" />
@@ -227,7 +271,7 @@
                         </svg>
                     </div>
                     <div class="stat-number" id="s-cities">0</div>
-                    <div class="stat-label">Service Provider</div>
+                    <div class="stat-label">Cities Served</div>
                 </div>
             </div>
         </div>
@@ -238,9 +282,8 @@
         <div class="container">
             <div class="section-header">
                 <span class="section-tag">OUR SERVICES</span>
-                <h2 class="section-title">Complete Emergency Healthcare</h2>
-                <p class="section-subtitle">From the first call to post-discharge recovery, EmergiX coordinates every
-                    step of your emergency care journey.</p>
+                <h2 class="section-title">Emergency Healthcare</h2>
+                <p class="section-subtitle">EmergiX connects you instantly to ambulances and doctors when every second counts.</p>
             </div>
             <div class="services-grid">
 
@@ -261,21 +304,6 @@
                     <div class="sc-badge" style="color:#FF4D4F;background:#FFF0F0;">2–8 min dispatch</div>
                 </article>
 
-                <article class="service-card" tabindex="0">
-                    <div class="sc-icon-wrap" style="background:#E8FBF9;">
-                        <svg width="30" height="30" viewBox="0 0 24 24" fill="none">
-                            <path
-                                d="M15 10l4.553-2.069A1 1 0 0121 8.87V15a2 2 0 01-1 1.73l-8 4.62A1 1 0 0111 21V9.54a1 1 0 01.553-.894L21 4"
-                                stroke="#27AE60" stroke-width="2" stroke-linecap="round" />
-                            <circle cx="7" cy="12" r="4" stroke="#27AE60" stroke-width="2" />
-                        </svg>
-                    </div>
-                    <h3 class="sc-title">Doctor Tele-Triage</h3>
-                    <p class="sc-desc">Video or audio consultation with on-call doctors within 8 minutes. Immediate
-                        clinical assessment anytime, anywhere.</p>
-                    <div class="sc-badge" style="color:#27AE60;background:#E8FBF9;">&lt;8 min connect</div>
-                </article>
-
                 <article class="service-card" tabindex="0" onclick="window.location.href='video-consultation.html'"
                     style="cursor: pointer;">
                     <div class="sc-icon-wrap" style="background:#FFF7E8;">
@@ -291,127 +319,10 @@
                     <div class="sc-badge" style="color:#F59E0B;background:#FFF7E8;">HD Video</div>
                 </article>
 
-                <article class="service-card" tabindex="0">
-                    <div class="sc-icon-wrap" style="background:#EEF3FF;">
-                        <svg width="30" height="30" viewBox="0 0 24 24" fill="none">
-                            <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" stroke="#2B7FFF" stroke-width="2" />
-                            <polyline points="9 22 9 12 15 12 15 22" stroke="#2B7FFF" stroke-width="2" />
-                        </svg>
-                    </div>
-                    <h3 class="sc-title">Hospital Routing</h3>
-                    <p class="sc-desc">AI-powered capability-based matching to the most appropriate hospital,
-                        considering distance, required medical specialization, and emergency readiness to ensure the
-                        patient receives timely and suitable care.</p>
-                    <div class="sc-badge" style="color:#2B7FFF;background:#EEF3FF;">AI-powered match</div>
-                </article>
-
-                <article class="service-card" tabindex="0" onclick="window.location.href='elder-care.html'"
-                    style="cursor: pointer;">
-                    <div class="sc-icon-wrap" style="background:#F0FFF4;">
-                        <svg width="30" height="30" viewBox="0 0 24 24" fill="none">
-                            <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="#22C55E" stroke-width="2" />
-                            <circle cx="9" cy="7" r="4" stroke="#22C55E" stroke-width="2" />
-                            <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="#22C55E"
-                                stroke-width="2" />
-                        </svg>
-                    </div>
-                    <h3 class="sc-title">Post Care Service</h3>
-                    <p class="sc-desc">Post-discharge nursing, caregiver booking, and recovery support. Compassionate,
-                        professional long-term care at home. <span style="color: #2B7FFF; font-weight: 500;">Click to
-                            book.</span></p>
-                    <div class="sc-badge" style="color:#22C55E;background:#F0FFF4;">24/7 Support</div>
-                </article>
-
-                <article class="service-card" tabindex="0">
-                    <div class="sc-icon-wrap" style="background:#F5F0FF;">
-                        <svg width="30" height="30" viewBox="0 0 24 24" fill="none">
-                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="#7C3AED" stroke-width="2"
-                                stroke-linecap="round" stroke-linejoin="round" />
-                        </svg>
-                    </div>
-                    <h3 class="sc-title">ER Pre-Alert</h3>
-                    <p class="sc-desc">Hospitals receive patient vitals and ETA before the ambulance arrives. Zero delay
-                        at the ER gate — team is ready.</p>
-                    <div class="sc-badge" style="color:#7C3AED;background:#F5F0FF;">Pre-alert sent</div>
-                </article>
-
             </div>
         </div>
     </section>
 
-    <!-- ============================= HOW IT WORKS ============================= -->
-    <section class="how-it-works" id="how-it-works" aria-label="How It Works">
-        <div class="container">
-            <div class="section-header">
-                <span class="section-tag">HOW IT WORKS</span>
-                <h2 class="section-title">Help in 4 Simple Steps</h2>
-                <p class="section-subtitle">From emergency trigger to hospital arrival — all coordinated in under 10
-                    minutes.</p>
-            </div>
-            <div class="steps-row">
-
-                <div class="step-item">
-                    <div class="step-circle">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
-                            <path
-                                d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81 19.79 19.79 0 01.01 1.18 2 2 0 012 0h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 13.92z"
-                                stroke="white" stroke-width="2" />
-                        </svg>
-                        <span class="step-num">01</span>
-                    </div>
-                    <div class="step-connector" aria-hidden="true"></div>
-                    <h3 class="step-title">Trigger Emergency</h3>
-                    <p class="step-desc">Submit your emergency with symptoms. Critical cases get instant dispatch — no
-                        forms, no wait.</p>
-                </div>
-
-                <div class="step-item">
-                    <div class="step-circle">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
-                            <path
-                                d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"
-                                stroke="white" stroke-width="2" />
-                        </svg>
-                        <span class="step-num">02</span>
-                    </div>
-                    <div class="step-connector" aria-hidden="true"></div>
-                    <h3 class="step-title">Doctor Triage</h3>
-                    <p class="step-desc">An on-call doctor assesses severity via video/audio in under 8 minutes to guide
-                        the response.</p>
-                </div>
-
-                <div class="step-item">
-                    <div class="step-circle">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
-                            <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" stroke="white" stroke-width="2" />
-                            <polyline points="9 22 9 12 15 12 15 22" stroke="white" stroke-width="2" />
-                        </svg>
-                        <span class="step-num">03</span>
-                    </div>
-                    <div class="step-connector" aria-hidden="true"></div>
-                    <h3 class="step-title">Hospital Routing</h3>
-                    <p class="step-desc">Patient is routed to the nearest capability-matched hospital. ER team
-                        pre-alerted and ready on arrival.</p>
-                </div>
-
-                <div class="step-item">
-                    <div class="step-circle">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
-                            <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="white" stroke-width="2" />
-                            <circle cx="9" cy="7" r="4" stroke="white" stroke-width="2" />
-                            <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="white"
-                                stroke-width="2" />
-                        </svg>
-                        <span class="step-num">04</span>
-                    </div>
-                    <h3 class="step-title">Post Care Service</h3>
-                    <p class="step-desc">Continuous support and dedicated care through our specialized Elder Care and
-                        recovery services after discharge.</p>
-                </div>
-
-            </div>
-        </div>
-    </section>
 
     <!-- ============================= TRACKING PREVIEW ============================= -->
     <section class="tracking" id="hospitals" aria-label="Live Tracking">
@@ -419,18 +330,15 @@
             <div class="tracking-grid">
 
                 <div class="tracking-info">
-                    <span class="section-tag">LIVE TRACKING</span>
-                    <h2 class="section-title" style="text-align:left;">Real-Time Ambulance & Hospital Dashboard</h2>
+                    <span class="section-tag" style="margin-bottom:10px;">LIVE TRACKING</span>
+                    <h2 class="section-title" style="margin-bottom:12px; text-align:left;">Real-Time<br> Ambulance Tracking</h2>
                     <p class="section-subtitle" style="text-align:left;margin:0 0 28px;">Watch your ambulance live on
-                        the map. Family members get a shareable link. Hospitals get ER pre-alerts before you arrive.</p>
+                        the map. Family members get a shareable link.</p>
                     <ul class="tracking-list">
                         <li><span class="tl-dot" style="background:#27AE60;"></span> GPS live tracking with ETAs updated
                             every 10 seconds</li>
                         <li><span class="tl-dot" style="background:#2B7FFF;"></span> Shareable family tracking link — no
                             app required</li>
-                        <li><span class="tl-dot" style="background:#7C3AED;"></span> ER pre-alert sent automatically to
-                            the receiving hospital</li>
-
                     </ul>
                     <button class="btn-brand" id="btnLiveMap">
                         View Live Map Demo
@@ -502,6 +410,11 @@
                 <h2 class="section-title">Leave a Review</h2>
                 <p class="section-subtitle">We value your feedback. Tell us about your experience with EmergiX.</p>
             </div>
+            <div id="reviews-list-container" class="testimonials-grid" style="margin-bottom: 4rem;">
+                <!-- Real reviews will be injected here -->
+                <div style="text-align:center; color:#64748B; padding:2rem;">Loading latest reviews...</div>
+            </div>
+
             <div class="review-form-container"
                 style="max-width: 600px; margin: 0 auto; background: white; padding: 2.5rem; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); text-align: left;">
                 <form class="review-form"
@@ -583,48 +496,42 @@
 
                 <div class="faq-item" id="faq3" role="listitem">
                     <button class="faq-q" onclick="toggleFaq('faq3')" aria-expanded="false" aria-controls="faq3-ans">
-                        How does hospital matching work?
+                        Are the doctors on EmergiX verified?
                         <svg class="faq-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                             <path d="M19 9l-7 7-7-7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
                                 stroke-linejoin="round" />
                         </svg>
                     </button>
                     <div class="faq-ans" id="faq3-ans" hidden>
-                        <p>Hospital matching is done by checking distance, bed availability, required specialization,
-                            facilities, insurance acceptance, and trauma capability. The nearest suitable hospital is
-                            selected, and the emergency department is pre-alerted before arrival.</p>
+                        <p>Yes. All doctors are verified through medical council registration and professional credential checks.</p>
                     </div>
                 </div>
 
                 <div class="faq-item" id="faq4" role="listitem">
                     <button class="faq-q" onclick="toggleFaq('faq4')" aria-expanded="false" aria-controls="faq4-ans">
-                        Is doctor triage available 24/7?
+                        What if video consultation is not possible?
                         <svg class="faq-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                             <path d="M19 9l-7 7-7-7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
                                 stroke-linejoin="round" />
                         </svg>
                     </button>
                     <div class="faq-ans" id="faq4-ans" hidden>
-                        <p>Yes. Our on-call doctors are available 24 hours a day, 365 days a year. Video connects within
-                            3 minutes, audio within 60 seconds during off-peak hours.</p>
+                        <p>The consultation can continue through audio.</p>
                     </div>
                 </div>
 
                 <div class="faq-item" id="faq5" role="listitem">
                     <button class="faq-q" onclick="toggleFaq('faq5')" aria-expanded="false" aria-controls="faq5-ans">
-                        What post-discharge services do you offer?
+                        Is the consultation secure and private?
                         <svg class="faq-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                             <path d="M19 9l-7 7-7-7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
                                 stroke-linejoin="round" />
                         </svg>
                     </button>
                     <div class="faq-ans" id="faq5-ans" hidden>
-                        <p>Our elder care and recovery services include: home nursing, physiotherapy, caregiver booking,
-                            medication delivery, follow-up tele-consultations, and recovery monitoring for family
-                            members.</p>
+                        <p>Yes. All consultations are conducted through encrypted communication to protect patient data.</p>
                     </div>
                 </div>
-
 
             </div>
         </div>
@@ -636,8 +543,8 @@
             <div class="footer-grid">
 
                 <div class="footer-brand-col">
-                    <p class="footer-desc">India's trusted emergency coordination platform. Rapid response, smart
-                        routing, compassionate care — 24/7.</p>
+                    <p class="footer-desc">India's trusted emergency coordination platform. Rapid response,
+                        compassionate care — 24/7.</p>
                     <div class="footer-socials">
                         <a href="#" class="fsocial" aria-label="Twitter">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
@@ -669,10 +576,6 @@
                     <h4 class="fcol-title">Services</h4>
                     <ul class="flinks">
                         <li><a href="#services">Ambulance Dispatch</a></li>
-                        <li><a href="#services">Doctor Triage</a></li>
-                        <li><a href="#services">Hospital Routing</a></li>
-                        <li><a href="#services">Post Care Service</a></li>
-                        <li><a href="#services">ER Pre-Alert</a></li>
                     </ul>
                 </div>
 
@@ -760,7 +663,7 @@
                 btn.innerText = 'Signing in...';
                 btn.disabled = true;
                 
-                fetch('http://localhost:3000/api/auth/signin', {
+                fetch('/api/auth/signin', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email: document.getElementById('siPhone').value, password: document.getElementById('siPass').value })
@@ -768,8 +671,12 @@
                 .then(r => r.json())
                 .then(data => {
                     if(data.token) {
+                        localStorage.setItem('token', data.token);
+                        localStorage.setItem('userEmail', data.user?.email || document.getElementById('siPhone').value);
+                        localStorage.setItem('userRole', data.user?.role || 'patient');
                         closeModal('modalSignin');
                         showToast('✅ Signed in successfully! Welcome back.', 'success');
+                        setTimeout(() => window.location.reload(), 450);
                     } else {
                         showToast('❌ ' + (data.error || 'Failed to sign in'), 'error');
                     }

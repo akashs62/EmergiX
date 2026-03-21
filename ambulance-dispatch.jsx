@@ -1,4 +1,5 @@
 const { useState, useEffect } = React;
+const API_Base = window.EmergiXConfig ? window.EmergiXConfig.API_BASE_URL : '';
 
 // --- Mock Data ---
 const EMERGENCY_TYPES = [
@@ -269,26 +270,25 @@ const TrackingScreen = ({ bookingData, onHome, onCancel }) => {
 
         let map;
         let ambMarker;
-        let intervalId;
+        let animationFrameId;
 
-        // Dummy coordinates for patient and ambulance initial location
-        const patientLatLng = [22.57286, 88.36401]; // Kolkata center
+        const patientLatLng = [22.57286, 88.36401]; // Kolkata center [lat, lng]
         const initialAmbLatLng = [22.55994, 88.35056];
 
         map = L.map('ambMapCanvas').setView(patientLatLng, 14);
 
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-            maxZoom: 20
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OSM &copy; CARTO',
+            maxZoom: 19
         }).addTo(map);
 
+        // Patient marker
         const patientIcon = L.divIcon({
-            className: 'custom-pin',
+            className: 'emergi-marker',
             html: `<div style="background:#FF4D4F; color:#fff; width:24px; height:24px; border-radius:50%; text-align:center; line-height:24px; font-weight:bold; box-shadow:0 0 10px rgba(255,77,79,0.5);">!</div>`,
             iconSize: [24, 24],
             iconAnchor: [12, 12]
         });
-
         L.marker(patientLatLng, { icon: patientIcon }).addTo(map).bindPopup('Your Location');
 
         const ambRoute = [
@@ -306,25 +306,24 @@ const TrackingScreen = ({ bookingData, onHome, onCancel }) => {
             opacity: 0.7
         }).addTo(map);
 
+        // Ambulance marker
         const ambIcon = L.divIcon({
-            className: 'custom-amb-pin',
+            className: 'emergi-marker',
             html: `<div style="background:#2EC4B6; color:#fff; width:36px; height:26px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:16px; box-shadow:0 0 12px rgba(46,196,182,0.6);">🚑</div>`,
             iconSize: [36, 26],
             iconAnchor: [18, 13]
         });
-
         ambMarker = L.marker(initialAmbLatLng, { icon: ambIcon, zIndexOffset: 1000 }).addTo(map);
 
         let progress = 0;
-        intervalId = setInterval(() => {
-            progress += 0.05;
+        const animate = () => {
+            progress += 0.008;
             const index = Math.floor(progress);
 
             if (index >= ambRoute.length - 1) {
                 ambMarker.setLatLng(ambRoute[ambRoute.length - 1]);
                 const etaEl = document.getElementById('ad-eta-display');
                 if (etaEl) etaEl.innerText = 'Arrived';
-                clearInterval(intervalId);
                 return;
             }
 
@@ -342,11 +341,15 @@ const TrackingScreen = ({ bookingData, onHome, onCancel }) => {
             if (etaEl && etaEl.innerText !== 'Arrived') {
                 etaEl.innerText = remaining + ' mins';
             }
-        }, 100);
+
+            animationFrameId = requestAnimationFrame(animate);
+        };
+
+        animate();
 
         return () => {
-            clearInterval(intervalId);
-            map.remove();
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            if (map) map.remove();
         };
     }, [showMap]);
 
@@ -427,10 +430,44 @@ const AmbulanceDispatchApp = () => {
     const [bookingRef, setBookingRef] = useState(null);
     const [cancelReason, setCancelReason] = useState(null);
 
-    const handleDirectConfirm = (data) => {
-        // Mock save
-        const id = 'EMR-' + Math.floor(1000 + Math.random() * 9000);
-        setBookingRef({ id, ambType: data.ambType, vehicleId: `${data.ambType}-204` });
+    const createBooking = async (details) => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${API_Base}/api/bookings`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(details)
+            });
+
+            if (!response.ok) {
+                throw new Error('Booking API failed');
+            }
+
+            const data = await response.json();
+            const bookingId = data.bookingId || ('EMR-' + Math.floor(1000 + Math.random() * 9000));
+            return { id: bookingId, ambType: details.ambType, vehicleId: `${details.ambType}-204` };
+        } catch (error) {
+            return {
+                id: 'EMR-' + Math.floor(1000 + Math.random() * 9000),
+                ambType: details.ambType,
+                vehicleId: `${details.ambType}-204`
+            };
+        }
+    };
+
+    const handleDirectConfirm = async (data) => {
+        const booking = await createBooking({
+            source: 'direct',
+            patientName: data.name,
+            contact: data.phone,
+            location: data.location,
+            emergencyType: data.type,
+            ambType: data.ambType
+        });
+        setBookingRef(booking);
         setView('tracking');
     };
 
@@ -439,9 +476,14 @@ const AmbulanceDispatchApp = () => {
         setView('result');
     };
 
-    const handleProceedFromTriage = (ambType) => {
-        const id = 'EMR-' + Math.floor(1000 + Math.random() * 9000);
-        setBookingRef({ id, ambType, vehicleId: `${ambType}-990` });
+    const handleProceedFromTriage = async (ambType) => {
+        const booking = await createBooking({
+            source: 'triage',
+            severity: triageResult?.severity,
+            reason: triageResult?.reason,
+            ambType
+        });
+        setBookingRef({ ...booking, vehicleId: `${ambType}-990` });
         setView('tracking');
     };
 
@@ -459,6 +501,20 @@ const AmbulanceDispatchApp = () => {
                     <div className="ad-header">
                         <h1 className="ad-title">Ambulance Dispatch</h1>
                         <p className="ad-subtitle">Select your dispatch method. Every second counts.</p>
+                        <div className="ad-hero-stats">
+                            <div className="ad-hero-stat">
+                                <strong>&lt; 60 sec</strong>
+                                <span>Fastest triage path to dispatch</span>
+                            </div>
+                            <div className="ad-hero-stat">
+                                <strong>ALS / BLS</strong>
+                                <span>Unit assignment by severity and need</span>
+                            </div>
+                            <div className="ad-hero-stat">
+                                <strong>Live ETA</strong>
+                                <span>Track vehicle progress after confirmation</span>
+                            </div>
+                        </div>
                     </div>
 
                     <div className="ad-options-container">

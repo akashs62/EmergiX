@@ -1,16 +1,8 @@
 const { useState, useEffect, useMemo } = React;
-
-const mockDoctors = [
-    { id: 1, name: "Dr. Raj Mehta", specialization: "General Physician", experience: 12, fee: 500, rating: 4.8, status: "Available" },
-    { id: 2, name: "Dr. Ananya Sen", specialization: "ENT", experience: 8, fee: 600, rating: 4.7, status: "Available" },
-    { id: 3, name: "Dr. Vikram Rao", specialization: "Cardiology", experience: 15, fee: 800, rating: 4.9, status: "Busy" },
-    { id: 4, name: "Dr. Priya Sharma", specialization: "Neurology", experience: 10, fee: 900, rating: 4.6, status: "Available" },
-    { id: 5, name: "Dr. Arjun Das", specialization: "Orthopedic", experience: 7, fee: 700, rating: 4.5, status: "Available" },
-    { id: 6, name: "Dr. Suman Roy", specialization: "General Physician", experience: 5, fee: 400, rating: 4.4, status: "Busy" },
-    { id: 7, name: "Dr. Kavita Nair", specialization: "Cardiology", experience: 20, fee: 1200, rating: 5.0, status: "Available" },
-];
+const API_Base = window.EmergiXConfig ? window.EmergiXConfig.API_BASE_URL : '';
 
 const VideoConsultationPage = () => {
+    const [doctors, setDoctors] = useState([]);
     const [search, setSearch] = useState('');
     const [specFilter, setSpecFilter] = useState('');
     const [sortBy, setSortBy] = useState('');
@@ -25,8 +17,21 @@ const VideoConsultationPage = () => {
     // Call UI State
     const [callTime, setCallTime] = useState(0);
 
+    useEffect(() => {
+        fetch(`${API_Base}/api/doctors`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    setDoctors(data.data);
+                }
+            })
+            .catch(err => console.error('Failed to load doctors:', err));
+    }, []);
+
+    const availableCount = doctors.filter(doc => doc.status === 'Available').length;
+
     const filteredDocs = useMemo(() => {
-        let res = [...mockDoctors];
+        let res = [...doctors];
         if (search) {
             const q = search.toLowerCase();
             res = res.filter(d => d.name.toLowerCase().includes(q) || d.specialization.toLowerCase().includes(q));
@@ -38,7 +43,7 @@ const VideoConsultationPage = () => {
         if (sortBy === 'availability') res.sort((a, b) => (a.status === 'Available' ? -1 : 1));
 
         return res;
-    }, [search, specFilter, sortBy]);
+    }, [search, specFilter, sortBy, doctors]);
 
     useEffect(() => {
         let interval = null;
@@ -58,10 +63,7 @@ const VideoConsultationPage = () => {
     };
 
     const handleConsult = (doc) => {
-        setSelectedDoc(doc);
-        setModalUI('booking');
-        setConsultType('instant');
-        setPatientInfo({ name: '', phone: '', symptoms: '' });
+        window.location.href = `doctor-profile.html?id=${doc.id}`;
     };
 
     const handleMockPayment = () => {
@@ -80,6 +82,20 @@ const VideoConsultationPage = () => {
             <div className="vc-header">
                 <h1 className="vc-title">Video Consultation</h1>
                 <p className="vc-subtitle">Connect face-to-face with top specialists instantly in HD.</p>
+                <div className="vc-metrics">
+                    <div className="vc-metric">
+                        <strong>{availableCount}</strong>
+                        <span>Doctors available for immediate consult</span>
+                    </div>
+                    <div className="vc-metric">
+                        <strong>12 min</strong>
+                        <span>Median handoff from booking to consult</span>
+                    </div>
+                    <div className="vc-metric">
+                        <strong>4.8 / 5</strong>
+                        <span>Average patient satisfaction across specialties</span>
+                    </div>
+                </div>
             </div>
 
             {/* Filters */}
@@ -99,6 +115,11 @@ const VideoConsultationPage = () => {
                     <option value="experience">Experience (High to Low)</option>
                     <option value="availability">Availability First</option>
                 </select>
+            </div>
+
+            <div className="vc-results-bar">
+                <span>{filteredDocs.length} specialists matched your filters.</span>
+                <span>Use Instant Connect for fast triage, or schedule when the case is stable.</span>
             </div>
 
             {/* Grid */}
@@ -122,14 +143,13 @@ const VideoConsultationPage = () => {
                         <div className="vc-price">₹{doc.fee} <span style={{ fontSize: '0.85rem', color: '#64748B', fontWeight: '400' }}>/ consult</span></div>
                         <button
                             className="vc-btn vc-btn-primary"
-                            disabled={doc.status === 'Busy'}
                             onClick={() => handleConsult(doc)}
                         >
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                                 <rect x="2" y="3" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="2" />
                                 <path d="M8 21h8M12 17v4" stroke="currentColor" strokeWidth="2" />
                             </svg>
-                            {doc.status === 'Available' ? 'Consult Now' : 'Doctor is Busy'}
+                            Book Consultation
                         </button>
                     </div>
                 ))}

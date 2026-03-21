@@ -2,122 +2,89 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const { connectDB } = require('./config/db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const NODE_ENV = process.env.NODE_ENV || 'development';
 
+const allowedOrigins = (process.env.CORS_ORIGIN || '*')
+    .split(',')
+    .map(origin => origin.trim())
+    .filter(Boolean);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Connect to MongoDB (non-blocking — falls back to in-memory if not configured)
+// ─────────────────────────────────────────────────────────────────────────────
+connectDB();
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Middleware
-app.use(cors());
-app.use(express.json());
+// ─────────────────────────────────────────────────────────────────────────────
+app.use(cors({
+    origin: allowedOrigins.includes('*') ? '*' : allowedOrigins,
+    credentials: !allowedOrigins.includes('*'),
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
+app.use(express.json({ limit: '10kb' }));
+app.use(express.urlencoded({ extended: true }));
 
-// Serve static files from the current directory (HTML, CSS, JS)
+// Serve static files (HTML, CSS, JS, images)
 app.use(express.static(path.join(__dirname, '.'), { extensions: ['html'] }));
 
-// ============================================
-// API ROUTES
-// ============================================
+// ─────────────────────────────────────────────────────────────────────────────
+// API Routes
+// ─────────────────────────────────────────────────────────────────────────────
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/bookings', require('./routes/bookings'));
+app.use('/api/appointments', require('./routes/appointments'));
+app.use('/api/doctors', require('./routes/doctors'));
+app.use('/api/reviews', require('./routes/reviews'));
+app.use('/api/stats', require('./routes/stats'));
 
-// Health check endpoint
+// ─────────────────────────────────────────────────────────────────────────────
+// Health Check
+// ─────────────────────────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {
-    res.status(200).json({ status: 'success', message: 'EmergiX backend is running!' });
-});
-
-// Mock Authentication - Patient Sign In
-app.post('/api/auth/signin', (req, res) => {
-    const { email, password } = req.body;
-
-    // Simple mock validation
-    if (email && password) {
-        res.status(200).json({
-            status: 'success',
-            token: 'mock-jwt-token-7382910',
-            user: { email, role: 'patient' }
-        });
-    } else {
-        res.status(400).json({ error: 'Email and password are required' });
-    }
-});
-
-// Mock Authentication - Doctor Sign In
-app.post('/api/auth/doctor/signin', (req, res) => {
-    const { email, password, licenseNo } = req.body;
-
-    if (!email || !password) {
-        return res.status(400).json({ error: 'Email and password are required' });
-    }
-
-    if (!licenseNo || !licenseNo.trim()) {
-        return res.status(400).json({ error: 'Medical License Number is required for doctor login' });
-    }
-
-    // In a real app, verify the license against a medical registry
+    const { isDBConnected } = require('./config/db');
     res.status(200).json({
         status: 'success',
-        token: 'mock-doctor-jwt-token-' + Date.now(),
-        user: {
-            email,
-            role: 'doctor',
-            name: 'Dr. ' + email.split('@')[0],
-            licenseNo,
-            specialization: 'Emergency Medicine'
-        }
+        message: 'EmergiX backend is running!',
+        database: isDBConnected() ? 'Supabase (PostgreSQL) connected' : 'In-memory mock mode',
+        timestamp: new Date().toISOString()
     });
 });
 
-// Mock Authentication - Ambulance Provider Sign In
-app.post('/api/auth/ambulance/signin', (req, res) => {
-    const { email, password, fleetId } = req.body;
-
-    if (!email || !password) {
-        return res.status(400).json({ error: 'Email and password are required' });
-    }
-
-    if (!fleetId || !fleetId.trim()) {
-        return res.status(400).json({ error: 'Fleet Registration ID is required for ambulance provider login' });
-    }
-
-    res.status(200).json({
-        status: 'success',
-        token: 'mock-ambulance-jwt-token-' + Date.now(),
-        user: {
-            email,
-            role: 'ambulance',
-            name: email.split('@')[0],
-            fleetId,
-            fleetName: 'EmergiX Fleet Services'
-        }
-    });
+// ─────────────────────────────────────────────────────────────────────────────
+// 404 handler for unknown API routes
+// ─────────────────────────────────────────────────────────────────────────────
+app.use('/api', (req, res) => {
+    res.status(404).json({ error: `Route ${req.originalUrl} not found.` });
 });
 
-// Mock Booking Endpoint
-app.post('/api/bookings', (req, res) => {
-    const bookingDetails = req.body;
-
-    if (!bookingDetails || Object.keys(bookingDetails).length === 0) {
-        return res.status(400).json({ error: 'Booking details are required' });
-    }
-
-    // In a real app, save to the database here
-    res.status(201).json({
-        status: 'success',
-        message: 'Ambulance booked successfully',
-        bookingId: `EMG-${Math.floor(Math.random() * 100000)}`,
-        data: bookingDetails
-    });
-});
-
-// ============================================
-// CATCH-ALL ROUTE
-// ============================================
-
-// Serve index.html for all other routes so frontend routing works (if you configure it later)
-app.use((req, res, next) => {
-    // Only serve index.html if the request is not requesting an API
-    if (req.path.startsWith('/api/')) return next();
+// ─────────────────────────────────────────────────────────────────────────────
+// Catch-all: serve index.html for any non-API route
+// ─────────────────────────────────────────────────────────────────────────────
+app.get(/^(?!\/api).*$/, (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Start the server
+// ─────────────────────────────────────────────────────────────────────────────
+// Global Error Handler
+// ─────────────────────────────────────────────────────────────────────────────
+app.use((err, req, res, next) => {
+    console.error('Unhandled error:', err);
+    const message = NODE_ENV === 'production'
+        ? 'An unexpected server error occurred.'
+        : (err?.message || 'An unexpected server error occurred.');
+    res.status(500).json({ error: message });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Start Server
+// ─────────────────────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
-    console.log(`Backend server successfully started on http://localhost:${PORT}`);
+    console.log(`\n🚑 EmergiX backend is live at http://localhost:${PORT}`);
+    console.log(`   Health check: http://localhost:${PORT}/api/health\n`);
 });
