@@ -12,173 +12,191 @@
         rel="stylesheet" />
     <link rel="stylesheet" href="style.css" />
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html,
         body {
-            background: var(--bg);
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            display: flex;
+            margin: 0;
+            background: var(--bg, #f8f9fa);
+        }
+
+        /* ── Left Branding Panel ── */
+        .brand-panel {
+            width: 420px;
+            min-width: 420px;
+            height: 100vh;
+            background: linear-gradient(160deg, #0f4c3a 0%, #1a7a5c 40%, #1e8f6c 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 48px 40px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .brand-panel::before {
+            content: '';
+            position: absolute;
+            top: -80px;
+            right: -80px;
+            width: 280px;
+            height: 280px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .brand-panel::after {
+            content: '';
+            position: absolute;
+            bottom: -60px;
+            left: -60px;
+            width: 220px;
+            height: 220px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .brand-logo {
+            margin-bottom: 32px;
+        }
+
+        .brand-logo img {
+            height: 40px;
+            filter: brightness(0) invert(1);
+        }
+
+        .brand-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(8px);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 24px;
+        }
+
+        .brand-badge .dot {
+            width: 7px;
+            height: 7px;
+            background: #4ade80;
+            border-radius: 50%;
+            animation: pulse-dot 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .brand-heading {
+            font-family: 'Poppins', sans-serif;
+            font-size: 28px;
+            font-weight: 700;
+            color: #fff;
+            line-height: 1.25;
+            margin-bottom: 28px;
+        }
+
+        .brand-heading .highlight {
+            color: #4ade80;
+        }
+
+        .brand-info-text {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.7);
+            line-height: 1.5;
+            margin-bottom: 28px;
+            font-style: italic;
+        }
+
+        .brand-role-cards {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .brand-role-card {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 14px 16px;
+            backdrop-filter: blur(6px);
+            transition: background 0.3s;
+        }
+
+        .brand-role-card:hover {
+            background: rgba(255, 255, 255, 0.14);
+        }
+
+        .brand-role-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            min-height: 100vh;
-            margin: 0;
-            padding: 24px;
+            flex-shrink: 0;
         }
 
-        .auth-nav {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            padding: 20px 40px;
+        .brand-role-icon.patient { background: rgba(39, 174, 96, 0.25); }
+        .brand-role-icon.doctor { background: rgba(79, 70, 229, 0.25); }
+        .brand-role-icon.ambulance { background: rgba(234, 88, 12, 0.25); }
+
+        .brand-role-icon svg {
+            width: 18px;
+            height: 18px;
+            color: #fff;
+        }
+
+        .brand-role-info h4 {
+            font-size: 13px;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 2px;
+        }
+
+        .brand-role-info p {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.6);
+            margin: 0;
+        }
+
+        /* ── Right Form Panel ── */
+        .form-panel {
+            flex: 1;
+            height: 100vh;
             display: flex;
-            justify-content: flex-start;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            overflow-y: auto;
         }
 
         .auth-container {
             width: 100%;
             max-width: 440px;
             background: white;
-            border-radius: var(--radius);
-            box-shadow: var(--shadow-md);
-            padding: 28px 36px 32px;
+            border-radius: 16px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+            padding: 24px 32px 20px;
             text-align: center;
-        }
-
-        .auth-title {
-            font-family: 'Poppins', sans-serif;
-            font-size: 24px;
-            font-weight: 700;
-            color: var(--dark);
-            margin-bottom: 4px;
-        }
-
-        .auth-subtitle {
-            font-size: 14px;
-            color: var(--muted);
-            margin-bottom: 18px;
-        }
-
-        /* ── Role Toggle Tabs ── */
-        .role-tabs {
-            display: flex;
-            background: #f1f3f5;
-            border-radius: 10px;
-            padding: 3px;
-            margin-bottom: 18px;
-        }
-
-        .role-tab {
-            flex: 1;
-            padding: 9px 14px;
-            border: none;
-            background: transparent;
-            font-family: 'Inter', sans-serif;
-            font-size: 13px;
-            font-weight: 600;
-            color: #6c757d;
-            cursor: pointer;
-            border-radius: 8px;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-
-        .role-tab.active {
-            color: #fff;
-            background: var(--active-accent, var(--teal));
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
-        }
-
-        .role-tab svg {
-            width: 18px;
-            height: 18px;
-        }
-
-        .role-tab:not(.active):hover {
-            color: #495057;
-            background: rgba(0, 0, 0, 0.04);
-        }
-
-        /* ── Form Styles ── */
-        .form-group {
-            text-align: left;
-            margin-bottom: 14px;
-        }
-
-        .form-label {
-            display: block;
-            font-size: 14px;
-            font-weight: 500;
-            color: var(--text);
-            margin-bottom: 6px;
-        }
-
-        .form-input,
-        .form-select {
-            width: 100%;
-            padding: 10px 12px;
-            border: 1px solid var(--border);
-            border-radius: var(--radius-sm);
-            font-family: 'Inter', sans-serif;
-            font-size: 14px;
-            transition: border-color var(--transition), box-shadow var(--transition);
-            background: #fff;
-        }
-
-        .form-input:focus,
-        .form-select:focus {
-            outline: none;
-            border-color: var(--active-accent, var(--teal));
-            box-shadow: 0 0 0 3px var(--focus-ring, rgba(39, 174, 96, 0.1));
-        }
-
-        .auth-btn {
-            width: 100%;
-            padding: 12px;
-            border: none;
-            border-radius: var(--radius-sm);
-            background: var(--active-gradient, var(--grad-brand));
-            color: white;
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
-            font-family: inherit;
-            transition: all var(--transition);
-            margin-top: 10px;
-        }
-
-        .auth-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 18px var(--btn-shadow, rgba(39, 174, 96, 0.25));
-        }
-
-        .auth-footer {
-            margin-top: 16px;
-            font-size: 13px;
-            color: var(--muted);
-        }
-
-        .auth-footer a {
-            color: var(--active-accent, var(--teal));
-            text-decoration: none;
-            font-weight: 600;
-        }
-
-        .auth-footer a:hover {
-            text-decoration: underline;
-        }
-
-        /* ── Doctor Extra Fields (slide animation) ── */
-        .doctor-fields {
-            max-height: 0;
-            overflow: hidden;
-            opacity: 0;
-            transition: max-height 0.4s ease, opacity 0.3s ease;
-        }
-
-        .doctor-fields.visible {
-            max-height: 200px;
-            opacity: 1;
         }
 
         /* ── Role Badge ── */
@@ -190,154 +208,421 @@
             border-radius: 20px;
             font-size: 11px;
             font-weight: 600;
-            margin-bottom: 10px;
+            margin-bottom: 6px;
             transition: all 0.3s ease;
         }
 
-        .role-badge.patient {
-            background: rgba(39, 174, 96, 0.1);
-            color: #27ae60;
-        }
-
-        .role-badge.doctor {
-            background: rgba(79, 70, 229, 0.1);
-            color: #4f46e5;
-        }
-
-        .role-badge.ambulance {
-            background: rgba(234, 88, 12, 0.1);
-            color: #ea580c;
-        }
+        .role-badge.patient { background: rgba(39, 174, 96, 0.1); color: #27ae60; }
+        .role-badge.doctor { background: rgba(79, 70, 229, 0.1); color: #4f46e5; }
+        .role-badge.ambulance { background: rgba(234, 88, 12, 0.1); color: #ea580c; }
 
         .role-badge svg {
-            width: 14px;
-            height: 14px;
+            width: 13px;
+            height: 13px;
+        }
+
+        .auth-title {
+            font-family: 'Poppins', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--dark, #1a1a2e);
+            margin-bottom: 2px;
+        }
+
+        .auth-subtitle {
+            font-size: 12px;
+            color: var(--muted, #6c757d);
+            margin-bottom: 12px;
+            line-height: 1.4;
+        }
+
+        /* ── Info Callout ── */
+        .info-callout {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 8px;
+            padding: 8px 12px;
+            margin-bottom: 12px;
+            text-align: left;
+        }
+
+        .info-callout svg {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+            color: #22c55e;
+            margin-top: 1px;
+        }
+
+        .info-callout p {
+            font-size: 11px;
+            color: #4b5563;
+            line-height: 1.45;
+            margin: 0;
+        }
+
+        /* ── Role Toggle Tabs ── */
+        .role-tabs {
+            display: flex;
+            background: #f1f3f5;
+            border-radius: 10px;
+            padding: 3px;
+            margin-bottom: 14px;
+        }
+
+        .role-tab {
+            flex: 1;
+            padding: 7px 10px;
+            border: none;
+            background: transparent;
+            font-family: 'Inter', sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            color: #6c757d;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .role-tab.active {
+            color: #fff;
+            background: var(--active-accent, var(--teal, #27ae60));
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+        }
+
+        .role-tab svg {
+            width: 15px;
+            height: 15px;
+        }
+
+        .role-tab:not(.active):hover {
+            color: #495057;
+            background: rgba(0, 0, 0, 0.04);
+        }
+
+        /* ── Form Styles ── */
+        .form-group {
+            text-align: left;
+            margin-bottom: 10px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text, #333);
+            margin-bottom: 4px;
+        }
+
+        .form-input,
+        .form-select {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid var(--border, #ddd);
+            border-radius: 8px;
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            background: #fff;
+        }
+
+        .form-input:focus,
+        .form-select:focus {
+            outline: none;
+            border-color: var(--active-accent, var(--teal, #27ae60));
+            box-shadow: 0 0 0 3px var(--focus-ring, rgba(39, 174, 96, 0.1));
+        }
+
+        .password-wrapper {
+            position: relative;
+        }
+
+        .password-wrapper .toggle-pw {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #adb5bd;
+            padding: 0;
+        }
+
+        .password-wrapper .toggle-pw svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .auth-btn {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            background: var(--active-gradient, var(--grad-brand, linear-gradient(135deg, #27ae60, #2ecc71)));
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s;
+            margin-top: 6px;
+        }
+
+        .auth-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 14px var(--btn-shadow, rgba(39, 174, 96, 0.25));
+        }
+
+        .auth-footer {
+            margin-top: 12px;
+            font-size: 12px;
+            color: var(--muted, #6c757d);
+        }
+
+        .auth-footer a {
+            color: var(--active-accent, var(--teal, #27ae60));
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .auth-footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* ── Doctor / Ambulance Extra Fields ── */
+        .doctor-fields {
+            max-height: 0;
+            overflow: hidden;
+            opacity: 0;
+            transition: max-height 0.35s ease, opacity 0.25s ease;
+        }
+
+        .doctor-fields.visible {
+            max-height: 180px;
+            opacity: 1;
+        }
+
+        /* ── Two-column row for extra fields ── */
+        .fields-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .fields-row .form-group {
+            flex: 1;
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 900px) {
+            .brand-panel {
+                display: none;
+            }
         }
     </style>
 </head>
 
 <body>
-    <div class="auth-nav">
-        <a href="index.html" class="nav-logo" style="gap:0;" aria-label="EmergiX Home">
-            <img src="logo.png" alt="EmergiX Logo" height="44"
-                style="display:block;height:44px;width:auto;mix-blend-mode:multiply;" />
-        </a>
+    <!-- Left Branding Panel -->
+    <div class="brand-panel">
+        <div class="brand-logo">
+            <a href="index.html"><img src="logo.png" alt="EmergiX" /></a>
+        </div>
+
+        <div class="brand-badge">
+            <span class="dot"></span>
+            Emergency Platform · Live
+        </div>
+
+        <h2 class="brand-heading">
+            Your role.<br />
+            Your <span class="highlight">workspace</span>.<br />
+            Your mission.
+        </h2>
+
+        <p class="brand-info-text">
+            Join EmergiX as a patient, doctor, or ambulance provider and access your dedicated command center.
+        </p>
+
+        <div class="brand-role-cards">
+            <div class="brand-role-card">
+                <div class="brand-role-icon patient">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
+                    </svg>
+                </div>
+                <div class="brand-role-info">
+                    <h4>Patient Access</h4>
+                    <p>Request ambulances & book consultations</p>
+                </div>
+            </div>
+            <div class="brand-role-card">
+                <div class="brand-role-icon doctor">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3" />
+                        <path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4" /><circle cx="20" cy="10" r="2" />
+                    </svg>
+                </div>
+                <div class="brand-role-info">
+                    <h4>Doctor Portal</h4>
+                    <p>Manage cases, video calls & schedules</p>
+                </div>
+            </div>
+            <div class="brand-role-card">
+                <div class="brand-role-icon ambulance">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M10 10H6" />
+                        <path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2" />
+                        <path d="M19 18h2a1 1 0 0 0 1-1v-3.28a1 1 0 0 0-.684-.948l-1.923-.641a1 1 0 0 1-.578-.502l-1.539-3.076A1 1 0 0 0 16.382 8H14" />
+                        <circle cx="17" cy="18" r="2" /><circle cx="7" cy="18" r="2" />
+                    </svg>
+                </div>
+                <div class="brand-role-info">
+                    <h4>Ambulance Fleet</h4>
+                    <p>Dispatch control & real-time tracking</p>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <div class="auth-container">
-        <!-- Role Badge -->
-        <div id="role-badge" class="role-badge patient">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                stroke-linejoin="round">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
-            </svg>
-            <span id="role-badge-text">Patient Sign-Up</span>
-        </div>
-
-        <h1 class="auth-title" id="auth-title">Create Account</h1>
-        <p class="auth-subtitle" id="auth-subtitle">Join EmergiX to fast-track emergency dispatch and save lives.</p>
-
-        <!-- Role Toggle Tabs -->
-        <div class="role-tabs">
-            <button class="role-tab active" id="tab-patient" type="button" onclick="switchRole('patient')">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                    stroke-linejoin="round">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                    <circle cx="12" cy="7" r="4" />
+    <!-- Right Form Panel -->
+    <div class="form-panel">
+        <div class="auth-container">
+            <!-- Role Badge -->
+            <div id="role-badge" class="role-badge patient">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
                 </svg>
-                Patient
-            </button>
-            <button class="role-tab" id="tab-doctor" type="button" onclick="switchRole('doctor')">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                    stroke-linejoin="round">
-                    <path
-                        d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3" />
-                    <path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4" />
-                    <circle cx="20" cy="10" r="2" />
+                <span id="role-badge-text">Patient Sign-Up</span>
+            </div>
+
+            <h1 class="auth-title" id="auth-title">Create Account</h1>
+            <p class="auth-subtitle" id="auth-subtitle">Join EmergiX to fast-track emergency dispatch and save lives.</p>
+
+            <!-- Info Callout -->
+            <div class="info-callout">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" />
                 </svg>
-                Doctor
-            </button>
-            <button class="role-tab" id="tab-ambulance" type="button" onclick="switchRole('ambulance')">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                    stroke-linejoin="round">
-                    <path d="M10 10H6" />
-                    <path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2" />
-                    <path
-                        d="M19 18h2a1 1 0 0 0 1-1v-3.28a1 1 0 0 0-.684-.948l-1.923-.641a1 1 0 0 1-.578-.502l-1.539-3.076A1 1 0 0 0 16.382 8H14" />
-                    <circle cx="17" cy="18" r="2" />
-                    <circle cx="7" cy="18" r="2" />
-                </svg>
-                Ambulance
-            </button>
-        </div>
-
-        <form id="auth-form">
-            <div id="error-message"
-                style="color: #e74c3c; font-size: 14px; margin-bottom: 15px; display: none; text-align: left; background: #fdf5f5; padding: 10px; border-radius: 4px; border: 1px solid #fabebd;">
+                <p>Register the right role to unlock the matching workspace: patient access, doctor portal, or ambulance fleet dashboard.</p>
             </div>
 
-            <div class="form-group" id="name-group">
-                <label for="name" class="form-label">Full Name</label>
-                <input type="text" id="name" class="form-input" placeholder="John Doe" required>
+            <!-- Role Toggle Tabs -->
+            <div class="role-tabs">
+                <button class="role-tab active" id="tab-patient" type="button" onclick="switchRole('patient')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
+                    </svg>
+                    Patient
+                </button>
+                <button class="role-tab" id="tab-doctor" type="button" onclick="switchRole('doctor')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3" />
+                        <path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4" /><circle cx="20" cy="10" r="2" />
+                    </svg>
+                    Doctor
+                </button>
+                <button class="role-tab" id="tab-ambulance" type="button" onclick="switchRole('ambulance')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M10 10H6" />
+                        <path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2" />
+                        <path d="M19 18h2a1 1 0 0 0 1-1v-3.28a1 1 0 0 0-.684-.948l-1.923-.641a1 1 0 0 1-.578-.502l-1.539-3.076A1 1 0 0 0 16.382 8H14" />
+                        <circle cx="17" cy="18" r="2" /><circle cx="7" cy="18" r="2" />
+                    </svg>
+                    Ambulance
+                </button>
             </div>
 
-            <div class="form-group">
-                <label for="email" class="form-label">Email Address</label>
-                <input type="email" id="email" class="form-input" placeholder="you@example.com" required>
-            </div>
-
-            <div class="form-group">
-                <label for="password" class="form-label">Password</label>
-                <input type="password" id="password" class="form-input" placeholder="••••••••" required>
-            </div>
-
-            <!-- Doctor-specific fields -->
-            <div class="doctor-fields" id="doctor-fields">
-                <div class="form-group">
-                    <label for="specialization" class="form-label">Specialization</label>
-                    <select id="specialization" class="form-input form-select">
-                        <option value="" disabled selected>Select your specialization</option>
-                        <option value="emergency-medicine">Emergency Medicine</option>
-                        <option value="cardiology">Cardiology</option>
-                        <option value="neurology">Neurology</option>
-                        <option value="orthopedics">Orthopedics</option>
-                        <option value="pediatrics">Pediatrics</option>
-                        <option value="general-surgery">General Surgery</option>
-                        <option value="internal-medicine">Internal Medicine</option>
-                        <option value="anesthesiology">Anesthesiology</option>
-                        <option value="radiology">Radiology</option>
-                        <option value="other">Other</option>
-                    </select>
+            <form id="auth-form">
+                <div id="error-message"
+                    style="color: #e74c3c; font-size: 12px; margin-bottom: 10px; display: none; text-align: left; background: #fdf5f5; padding: 8px 10px; border-radius: 6px; border: 1px solid #fabebd;">
                 </div>
-                <div class="form-group">
-                    <label for="license" class="form-label">Medical License No.</label>
-                    <input type="text" id="license" class="form-input" placeholder="e.g. MCI-123456">
+
+                <div class="form-group" id="name-group">
+                    <label for="name" class="form-label">Full Name</label>
+                    <input type="text" id="name" class="form-input" placeholder="John Doe" required>
                 </div>
+
+                <div class="form-group">
+                    <label for="email" class="form-label">Email Address</label>
+                    <input type="email" id="email" class="form-input" placeholder="you@example.com" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="password" class="form-label">Password</label>
+                    <div class="password-wrapper">
+                        <input type="password" id="password" class="form-input" placeholder="Min. 8 characters" required>
+                        <button type="button" class="toggle-pw" onclick="togglePassword()">
+                            <svg id="pw-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Doctor-specific fields (side by side) -->
+                <div class="doctor-fields" id="doctor-fields">
+                    <div class="fields-row">
+                        <div class="form-group">
+                            <label for="specialization" class="form-label">Specialization</label>
+                            <select id="specialization" class="form-input form-select">
+                                <option value="" disabled selected>Select</option>
+                                <option value="emergency-medicine">Emergency Medicine</option>
+                                <option value="cardiology">Cardiology</option>
+                                <option value="neurology">Neurology</option>
+                                <option value="orthopedics">Orthopedics</option>
+                                <option value="pediatrics">Pediatrics</option>
+                                <option value="general-surgery">General Surgery</option>
+                                <option value="internal-medicine">Internal Medicine</option>
+                                <option value="anesthesiology">Anesthesiology</option>
+                                <option value="radiology">Radiology</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="license" class="form-label">License No.</label>
+                            <input type="text" id="license" class="form-input" placeholder="MCI-123456">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ambulance Provider fields (side by side) -->
+                <div class="doctor-fields" id="ambulance-fields">
+                    <div class="fields-row">
+                        <div class="form-group">
+                            <label for="fleet-name" class="form-label">Fleet / Company</label>
+                            <input type="text" id="fleet-name" class="form-input" placeholder="CityMed Services">
+                        </div>
+                        <div class="form-group">
+                            <label for="fleet-id" class="form-label">Registration ID</label>
+                            <input type="text" id="fleet-id" class="form-input" placeholder="FLT-98765">
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" id="submit-btn" class="auth-btn">Create Account</button>
+            </form>
+
+            <div class="auth-footer">
+                Already have an account? <a href="signin.html">Sign In</a>
             </div>
-
-            <!-- Ambulance Provider fields -->
-            <div class="doctor-fields" id="ambulance-fields">
-                <div class="form-group">
-                    <label for="fleet-name" class="form-label">Fleet / Company Name</label>
-                    <input type="text" id="fleet-name" class="form-input" placeholder="e.g. CityMed Ambulance Services">
-                </div>
-                <div class="form-group">
-                    <label for="fleet-id" class="form-label">Fleet Registration ID</label>
-                    <input type="text" id="fleet-id" class="form-input" placeholder="e.g. FLT-98765">
-                </div>
-            </div>
-
-            <button type="submit" id="submit-btn" class="auth-btn">Create Account</button>
-        </form>
-
-        <div class="auth-footer">
-            Already have an account? <a href="signin.html">Sign In</a>
         </div>
     </div>
 
     <script>
         let currentRole = 'patient';
+
+        function togglePassword() {
+            const pw = document.getElementById('password');
+            pw.type = pw.type === 'password' ? 'text' : 'password';
+        }
 
         function switchRole(role) {
             currentRole = role;
