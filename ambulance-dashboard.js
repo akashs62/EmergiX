@@ -241,12 +241,7 @@ function renderSettings() {
 }
 
 // ── Shared Utils ──
-function populateUserInfo() {
-    const email = localStorage.getItem('userEmail') || 'fleet@emergix.com';
-    const role = localStorage.getItem('userRole');
-    if (role && role !== 'ambulance') { window.location.href = 'index.html'; return; }
-    document.getElementById('greeting').textContent = `Fleet Portal: ${email.split('@')[0]}`;
-}
+
 
 function bindNotifications() {
     const btn = document.querySelector('.notification-btn');
