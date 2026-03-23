@@ -8,6 +8,8 @@ const VideoConsultationPage = () => {
     const [sortBy, setSortBy] = useState('');
     const [selectedDoc, setSelectedDoc] = useState(null);
     const [modalUI, setModalUI] = useState(null); // 'booking', 'payment', 'call'
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
     // Form
     const [consultType, setConsultType] = useState('instant');
@@ -18,14 +20,25 @@ const VideoConsultationPage = () => {
     const [callTime, setCallTime] = useState(0);
 
     useEffect(() => {
+        setLoading(true);
+        setError(null);
         fetch(`${API_Base}/api/doctors`)
-            .then(res => res.json())
+            .then(res => {
+                if (!res.ok) throw new Error(`Server responded with ${res.status}`);
+                return res.json();
+            })
             .then(data => {
                 if (data.status === 'success') {
                     setDoctors(data.data);
+                } else {
+                    throw new Error(data.error || 'Failed to load doctors');
                 }
             })
-            .catch(err => console.error('Failed to load doctors:', err));
+            .catch(err => {
+                console.error('Failed to load doctors:', err);
+                setError(err.message);
+            })
+            .finally(() => setLoading(false));
     }, []);
 
     const availableCount = doctors.filter(doc => doc.status === 'Available').length;
@@ -123,37 +136,55 @@ const VideoConsultationPage = () => {
             </div>
 
             {/* Grid */}
-            <div className="vc-grid">
-                {filteredDocs.map(doc => (
-                    <div key={doc.id} className="vc-card">
-                        <div className={`vc-status ${doc.status === 'Available' ? 'status-avail' : 'status-busy'}`}>
-                            {doc.status}
-                        </div>
-                        <div className="vc-card-header">
-                            <div className="vc-avatar">{doc.name.split(' ')[1].charAt(0)}</div>
-                            <div>
-                                <h3 className="vc-name">{doc.name}</h3>
-                                <div className="vc-spec">{doc.specialization}</div>
+            {loading ? (
+                <div style={{ textAlign: 'center', padding: '3rem', color: '#64748B' }}>
+                    <div className="loader" style={{ margin: '0 auto 1rem' }}></div>
+                    <p>Fetching specialists...</p>
+                </div>
+            ) : error ? (
+                <div style={{ textAlign: 'center', padding: '3rem', color: '#EF4444', background: '#FEF2F2', borderRadius: '16px', border: '1px solid #FECACA' }}>
+                    <p>⚠️ {error}</p>
+                    <button className="vc-btn" onClick={() => window.location.reload()} style={{ marginTop: '1rem', background: '#fff' }}>Retry</button>
+                </div>
+            ) : filteredDocs.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '4rem', color: '#64748B', background: '#F8FAFC', borderRadius: '24px', border: '2px dashed #E2E8F0' }}>
+                    <span style={{ fontSize: '3rem', display: 'block', marginBottom: '1rem' }}>🔍</span>
+                    <h3 style={{ color: '#1E293B', marginBottom: '0.5rem' }}>No specialists found</h3>
+                    <p>Try adjusting your filters or search terms.</p>
+                </div>
+            ) : (
+                <div className="vc-grid">
+                    {filteredDocs.map(doc => (
+                        <div key={doc.id} className="vc-card">
+                            <div className={`vc-status ${doc.status === 'Available' ? 'status-avail' : 'status-busy'}`}>
+                                {doc.status}
                             </div>
+                            <div className="vc-card-header">
+                                <div className="vc-avatar">{doc.name ? doc.name.charAt(0).toUpperCase() : 'D'}</div>
+                                <div>
+                                    <h3 className="vc-name">{doc.name}</h3>
+                                    <div className="vc-spec">{doc.specialization}</div>
+                                </div>
+                            </div>
+                            <div className="vc-stats">
+                                <span>⭐ {doc.rating} / 5</span>
+                                <span>⏳ {doc.experience} Years Exp.</span>
+                            </div>
+                            <div className="vc-price">₹{doc.fee} <span style={{ fontSize: '0.85rem', color: '#64748B', fontWeight: '400' }}>/ consult</span></div>
+                            <button
+                                className="vc-btn vc-btn-primary"
+                                onClick={() => handleConsult(doc)}
+                            >
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                    <rect x="2" y="3" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="2" />
+                                    <path d="M8 21h8M12 17v4" stroke="currentColor" strokeWidth="2" />
+                                </svg>
+                                Book Consultation
+                            </button>
                         </div>
-                        <div className="vc-stats">
-                            <span>⭐ {doc.rating} / 5</span>
-                            <span>⏳ {doc.experience} Years Exp.</span>
-                        </div>
-                        <div className="vc-price">₹{doc.fee} <span style={{ fontSize: '0.85rem', color: '#64748B', fontWeight: '400' }}>/ consult</span></div>
-                        <button
-                            className="vc-btn vc-btn-primary"
-                            onClick={() => handleConsult(doc)}
-                        >
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                                <rect x="2" y="3" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="2" />
-                                <path d="M8 21h8M12 17v4" stroke="currentColor" strokeWidth="2" />
-                            </svg>
-                            Book Consultation
-                        </button>
-                    </div>
-                ))}
-            </div>
+                    ))}
+                </div>
+            )}
 
             {/* Modals Overlay */}
             {(modalUI === 'booking' || modalUI === 'payment') && (

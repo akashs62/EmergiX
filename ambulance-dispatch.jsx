@@ -16,6 +16,44 @@ const DirectBookingForm = ({ onBack, onConfirm }) => {
     const [formData, setFormData] = useState({
         name: '', phone: '', location: '', type: 'other', ambType: 'BLS'
     });
+    const [isDetecting, setIsDetecting] = useState(false);
+    const [detectError, setDetectError] = useState(null);
+
+    const detectLocation = () => {
+        if (!navigator.geolocation) {
+            setDetectError('Geolocation not supported');
+            return;
+        }
+
+        setIsDetecting(true);
+        setDetectError(null);
+
+        navigator.geolocation.getCurrentPosition(
+            async (position) => {
+                const { latitude, longitude } = position.coords;
+                try {
+                    // Reverse Geocoding using Nominatim (OpenStreetMap)
+                    const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`);
+                    const data = await response.json();
+                    const address = data.display_name || `${latitude}, ${longitude}`;
+                    setFormData(prev => ({ ...prev, location: address }));
+                } catch (err) {
+                    setFormData(prev => ({ ...prev, location: `${latitude}, ${longitude}` }));
+                } finally {
+                    setIsDetecting(false);
+                }
+            },
+            (err) => {
+                setDetectError('Failed to get location');
+                setIsDetecting(false);
+            },
+            { enableHighAccuracy: true, timeout: 10000 }
+        );
+    };
+
+    useEffect(() => {
+        detectLocation();
+    }, []);
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -46,9 +84,16 @@ const DirectBookingForm = ({ onBack, onConfirm }) => {
                     </div>
 
                     <div className="ad-form-group">
-                        <label className="ad-label">Current Location (Auto-detect simulated)</label>
-                        <input className="ad-input" type="text" placeholder="Search via Google Maps API..." required
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <label className="ad-label">Current Location {isDetecting && <span style={{ color: '#2563EB', fontSize: '0.75rem', fontWeight: 400 }}>— Searching...</span>}</label>
+                            <button type="button" onClick={detectLocation} disabled={isDetecting} 
+                                style={{ background: 'none', border: 'none', color: '#2563EB', fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', padding: 0 }}>
+                                <span>🔄</span> Refresh
+                            </button>
+                        </div>
+                        <input className="ad-input" type="text" placeholder={isDetecting ? "Detecting location..." : "Your address here..."} required
                             value={formData.location} onChange={e => setFormData({ ...formData, location: e.target.value })} />
+                        {detectError && <div style={{ color: '#DC2626', fontSize: '0.75rem', marginTop: '0.25rem' }}>{detectError}</div>}
                     </div>
 
                     <div style={{ display: 'flex', gap: '1rem' }}>

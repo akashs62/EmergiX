@@ -5,9 +5,7 @@ const bcrypt = require('bcryptjs');
 const { isDBConnected, } = require('../config/db');
 const { getSupabaseAdmin } = require('../config/supabase');
 
-// ── In-memory store (when Supabase is not configured) ─────────────────────────
-const memUsers = [];
-const memOTPs = new Map(); // Store OTPs: email -> { otp, expires, verified }
+const { memUsers, memOTPs } = require('../config/memdb');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -17,8 +15,17 @@ const signToken = (payload) =>
         expiresIn: process.env.JWT_EXPIRES_IN || '7d'
     });
 
-const normalizeEmail = (email = '') => email.trim().toLowerCase();
-const normalizeRole = (role = 'patient') => String(role).trim().toLowerCase();
+const normalizeEmail = (val) => {
+    if (!val || typeof val !== 'string') return '';
+    return val.trim().toLowerCase();
+};
+
+const normalizeRole = (val) => {
+    const validRoles = ['patient', 'doctor', 'ambulance'];
+    if (!val || typeof val !== 'string') return 'patient';
+    const r = val.trim().toLowerCase();
+    return validRoles.includes(r) ? r : 'patient';
+};
 
 const validateSignup = (body, role) => {
     const { name, email, password } = body;
@@ -187,11 +194,22 @@ router.post('/doctor/signin', async (req, res) => {
                 user: { id: user.id, name: user.name, email: user.email, role: 'doctor', licenseNo: user.license_no, specialization: user.specialization }
             });
         } else {
-            const doctorName = 'Dr. ' + cleanEmail.split('@')[0];
-            const token = signToken({ id: `doc_${Date.now()}`, email: cleanEmail, role: 'doctor', name: doctorName, licenseNo });
+            // Demo fallback — check if user exists in memUsers, otherwise generate demo data
+            const stored = memUsers.find(u => u.email === cleanEmail && u.role === 'doctor');
+            
+            if (stored && !(await bcrypt.compare(password, stored.password_hash))) {
+                return res.status(401).json({ error: 'Invalid email or password.' });
+            }
+
+            const name = stored ? stored.name : ('Dr. ' + cleanEmail.split('@')[0]);
+            const spec = stored ? stored.specialization : 'Emergency Medicine';
+            const id = stored ? stored.id : `doc_${Date.now()}`;
+            const lic = stored ? stored.license_no : licenseNo;
+
+            const token = signToken({ id, email: cleanEmail, role: 'doctor', name, licenseNo: lic });
             return res.status(200).json({
                 status: 'success', token,
-                user: { email: cleanEmail, role: 'doctor', name: doctorName, licenseNo, specialization: 'Emergency Medicine' }
+                user: { id, email: cleanEmail, role: 'doctor', name, licenseNo: lic, specialization: spec }
             });
         }
     } catch (err) {
@@ -232,10 +250,22 @@ router.post('/ambulance/signin', async (req, res) => {
                 user: { id: user.id, name: user.name, email: user.email, role: 'ambulance', fleetId: user.fleet_id, fleetName: user.fleet_name }
             });
         } else {
-            const token = signToken({ id: `amb_${Date.now()}`, email: cleanEmail, role: 'ambulance', name: cleanEmail.split('@')[0], fleetId });
+            // Demo fallback — check if user exists in memUsers, otherwise generate demo data
+            const stored = memUsers.find(u => u.email === cleanEmail && u.role === 'ambulance');
+            
+            if (stored && !(await bcrypt.compare(password, stored.password_hash))) {
+                return res.status(401).json({ error: 'Invalid email or password.' });
+            }
+
+            const name = stored ? stored.name : (cleanEmail.split('@')[0] + ' Fleet');
+            const id = stored ? stored.id : `amb_${Date.now()}`;
+            const fid = stored ? stored.fleet_id : fleetId;
+            const fleetName = stored ? (stored.fleet_name || 'EmergiX Fleet Services') : 'EmergiX Fleet Services';
+
+            const token = signToken({ id, email: cleanEmail, role: 'ambulance', name, fleetId: fid });
             return res.status(200).json({
                 status: 'success', token,
-                user: { email: cleanEmail, role: 'ambulance', name: cleanEmail.split('@')[0], fleetId, fleetName: 'EmergiX Fleet Services' }
+                user: { id, email: cleanEmail, role: 'ambulance', name, fleetId: fid, fleetName }
             });
         }
     } catch (err) {
@@ -251,7 +281,8 @@ router.post('/request-otp', async (req, res) => {
     const { email, role } = req.body;
     const cleanEmail = normalizeEmail(email);
     const cleanRole = normalizeRole(role);
-    if (!cleanEmail || !cleanRole) return res.status(400).json({ error: 'Email and role are required.' });
+
+    if (!cleanEmail) return res.status(400).json({ error: 'Email address is required.' });
 
     try {
         const otp = Math.floor(100000 + Math.random() * 900000).toString();

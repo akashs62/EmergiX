@@ -451,6 +451,203 @@
                 button.innerText = r.btnText; button.disabled = false; button.style.opacity = '1';
             }
         });
+
+        // Password Toggle
+        const passInput = document.getElementById('password');
+        const passToggle = document.getElementById('toggle-password');
+        const eyeIcon = document.getElementById('eye-icon');
+
+        passToggle.addEventListener('click', () => {
+            const isPass = passInput.type === 'password';
+            passInput.type = isPass ? 'text' : 'password';
+            if (isPass) {
+                eyeIcon.innerHTML = `<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line>`;
+            } else {
+                eyeIcon.innerHTML = `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>`;
+            }
+        });
+
+        // Forgot Password
+        document.getElementById('forgot-password').addEventListener('click', () => {
+            document.getElementById('reset-modal').classList.add('active');
+            document.getElementById('reset-email').value = document.getElementById('email').value;
+        });
+
+        function closeResetModal() {
+            document.getElementById('reset-modal').classList.remove('active');
+            document.getElementById('reset-error').style.display = 'none';
+            document.getElementById('reset-success').style.display = 'none';
+            document.getElementById('reset-form').reset();
+            document.getElementById('reset-step-1').style.display = 'block';
+            document.getElementById('reset-step-2').style.display = 'none';
+            document.getElementById('reset-step-3').style.display = 'none';
+        }
+
+        async function handleRequestOTP() {
+            const email = document.getElementById('reset-email').value;
+            const btn = document.getElementById('request-otp-btn');
+            const errorEl = document.getElementById('reset-error');
+            const successEl = document.getElementById('reset-success');
+            if (!email || !email.includes('@')) { errorEl.textContent = 'Please enter a valid email address.'; errorEl.style.display = 'block'; return; }
+            btn.textContent = 'Sending…'; btn.disabled = true;
+            errorEl.style.display = 'none'; successEl.style.display = 'none';
+            try {
+                const API_URL = window.EmergiXConfig ? window.EmergiXConfig.API_BASE_URL : '';
+                const res = await fetch(`${API_URL}/api/auth/request-otp`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, role: currentRole }) });
+                const data = await res.json();
+                if (res.ok) {
+                    successEl.textContent = 'OTP sent to your email.';
+                    successEl.style.display = 'block';
+                    document.getElementById('reset-step-1').style.display = 'none';
+                    document.getElementById('reset-step-2').style.display = 'block';
+                } else {
+                    errorEl.textContent = data.error || 'Failed to send OTP.';
+                    errorEl.style.display = 'block';
+                    btn.textContent = 'Send OTP'; btn.disabled = false;
+                }
+            } catch { errorEl.textContent = 'Network error.'; errorEl.style.display = 'block'; btn.textContent = 'Send OTP'; btn.disabled = false; }
+        }
+
+        async function handleVerifyOTP() {
+            const otp = document.getElementById('reset-otp').value;
+            const email = document.getElementById('reset-email').value;
+            const btn = document.getElementById('verify-otp-btn') || document.querySelector('#reset-step-2 .auth-btn');
+            const errorEl = document.getElementById('reset-error');
+            if (!otp || otp.length !== 6) { errorEl.textContent = 'Please enter the 6-digit OTP.'; errorEl.style.display = 'block'; return; }
+            if (btn) { btn.textContent = 'Verifying…'; btn.disabled = true; }
+            errorEl.style.display = 'none';
+            try {
+                const API_URL = window.EmergiXConfig ? window.EmergiXConfig.API_BASE_URL : '';
+                const res = await fetch(`${API_URL}/api/auth/verify-otp`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, otp, role: currentRole }) });
+                const data = await res.json();
+                if (res.ok) {
+                    document.getElementById('reset-step-2').style.display = 'none';
+                    document.getElementById('reset-step-3').style.display = 'block';
+                } else {
+                    errorEl.textContent = data.error || 'Invalid OTP.';
+                    errorEl.style.display = 'block';
+                    if (btn) { btn.textContent = 'Verify OTP'; btn.disabled = false; }
+                }
+            } catch { errorEl.textContent = 'Network error.'; errorEl.style.display = 'block'; if (btn) { btn.textContent = 'Verify OTP'; btn.disabled = false; } }
+        }
+
+        document.getElementById('reset-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('reset-email').value;
+            const otp = document.getElementById('reset-otp').value;
+            const newPass = document.getElementById('reset-new-pass').value;
+            const btn = document.getElementById('reset-submit-btn');
+            const errorEl = document.getElementById('reset-error');
+            if (!newPass || newPass.length < 8) { errorEl.textContent = 'Password must be at least 8 characters.'; errorEl.style.display = 'block'; return; }
+            btn.textContent = 'Resetting…'; btn.disabled = true;
+            errorEl.style.display = 'none';
+            try {
+                const API_URL = window.EmergiXConfig ? window.EmergiXConfig.API_BASE_URL : '';
+                const res = await fetch(`${API_URL}/api/auth/reset-password`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, otp, newPassword: newPass, role: currentRole }) });
+                const data = await res.json();
+                if (res.ok) {
+                    document.getElementById('reset-success').textContent = 'Password reset successfully! Redirecting…';
+                    document.getElementById('reset-success').style.display = 'block';
+                    setTimeout(() => closeResetModal(), 1500);
+                } else {
+                    errorEl.textContent = data.error || 'Failed to reset password.';
+                    errorEl.style.display = 'block';
+                    btn.textContent = 'Complete Reset'; btn.disabled = false;
+                }
+            } catch { errorEl.textContent = 'Network error.'; errorEl.style.display = 'block'; btn.textContent = 'Complete Reset'; btn.disabled = false; }
+        });
+
+        // Google Sign In
+        async function handleGoogleSignIn() {
+            renderGoogleAccounts();
+            document.getElementById('google-modal').classList.add('active');
+        }
+
+        function getSavedGoogleAccounts() {
+            try {
+                const accounts = JSON.parse(localStorage.getItem('emergix_google_accounts') || '[]');
+                // Filter out the demo/unwanted account if it exists
+                return accounts.filter(a => a.email !== 'akashs6202@gmail.com');
+            } catch { return []; }
+        }
+
+        function saveGoogleAccount(name, email) {
+            const accounts = getSavedGoogleAccounts();
+            const exists = accounts.find(a => a.email === email);
+            if (!exists) {
+                accounts.push({ name, email });
+                localStorage.setItem('emergix_google_accounts', JSON.stringify(accounts));
+            }
+        }
+
+        function closeGoogleModal() {
+            document.getElementById('google-modal').classList.remove('active');
+        }
+
+        function getAvatarColor(email) {
+            const colors = ['#2B7FFF','#10b981','#8b5cf6','#f59e0b','#ef4444','#06b6d4'];
+            let hash = 0;
+            for (let c of email) hash = c.charCodeAt(0) + ((hash << 5) - hash);
+            return colors[Math.abs(hash) % colors.length];
+        }
+
+        function renderGoogleAccounts() {
+            const list = document.getElementById('google-accounts-list');
+            const accounts = getSavedGoogleAccounts();
+            list.innerHTML = '';
+
+            if (accounts.length === 0) {
+                const emptyItem = document.createElement('div');
+                emptyItem.style.cssText = 'padding:20px 16px; text-align:center; color:#64748b; font-size:14px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; margin-top:10px; font-family:\'Inter\',sans-serif; line-height:1.5;';
+                emptyItem.innerHTML = 'No Google account found on this device.<br>Please add an account in your device settings or use the main sign-in form.';
+                list.appendChild(emptyItem);
+                return;
+            }
+
+            accounts.forEach(({ name, email }) => {
+                const initial = (name || email)[0].toUpperCase();
+                const color = getAvatarColor(email);
+                const item = document.createElement('div');
+                item.className = 'google-account-item';
+                item.innerHTML = `
+                    <div class="google-avatar" style="background:${color};">${initial}</div>
+                    <div class="google-acc-info">
+                        <h4>${name || email}</h4>
+                        <p>${email}</p>
+                    </div>`;
+                item.onclick = () => selectGoogleAccount(name, email);
+                list.appendChild(item);
+            });
+        }
+
+        async function selectGoogleAccount(name, email) {
+            const modal = document.getElementById('google-modal');
+            modal.innerHTML = `<div class="modal-content" style="max-width:320px;padding:50px 24px;text-align:center;"><div class="loader" style="margin:0 auto 20px;"></div><h3 style="font-size:16px;margin:0;font-family:'Poppins',sans-serif;">Signing you in…</h3><p style="font-size:13px;color:#64748b;margin-top:8px;">Authenticating with Google</p></div>`;
+            try {
+                const API_URL = window.EmergiXConfig ? window.EmergiXConfig.API_BASE_URL : '';
+                const response = await fetch(`${API_URL}/api/auth/google`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, name, role: currentRole })
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('userEmail', data.user.email);
+                    localStorage.setItem('userName', data.user.name);
+                    localStorage.setItem('userRole', data.user.role);
+                    saveGoogleAccount(data.user.name || name, data.user.email || email);
+                    setTimeout(() => { window.location.href = ROLES[currentRole].redirect; }, 1000);
+                } else {
+                    alert(data.error || 'Google login failed.');
+                    window.location.reload();
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Network error. Google services are currently busy.');
+                window.location.reload();
+            }
+        }
     </script>
 </body>
 
