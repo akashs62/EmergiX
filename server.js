@@ -90,7 +90,11 @@ app.use((err, req, res, next) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // Start Server
 // ─────────────────────────────────────────────────────────────────────────────
-app.listen(PORT, () => {
-    console.log(`\n🚑 EmergiX backend is live at http://localhost:${PORT}`);
-    console.log(`   Health check: http://localhost:${PORT}/api/health\n`);
-});
+if (require.main === module) {
+    app.listen(PORT, () => {
+        console.log(`\n🚑 EmergiX backend is live at http://localhost:${PORT}`);
+        console.log(`   Health check: http://localhost:${PORT}/api/health\n`);
+    });
+}
+
+module.exports = app;

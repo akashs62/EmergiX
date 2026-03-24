@@ -10,8 +10,8 @@ const EmergiXConfig = (() => {
                     window.location.protocol === 'file:';
 
     // By default, use same-origin API in production, and localhost in local dev.
-    const PRODUCTION_API_URL = 'https://emergi-x.vercel.app'; 
-    const LOCAL_API_URL = 'https://emergi-x.vercel.app';
+    const PRODUCTION_API_URL = ''; // Relative path works since frontend/backend share the domain
+    const LOCAL_API_URL = 'http://localhost:3000';
     
     // Determine the base URL. If we are local, use the local URL. 
     // If we are in production but don't have a URL set, it defaults to same-origin.
