@@ -147,4 +147,57 @@ router.get('/:id', async (req, res) => {
     }
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// PUT /api/doctors/:id  — Update doctor profile
+// ─────────────────────────────────────────────────────────────────────────────
+router.put('/:id', async (req, res) => {
+    const { age, experience, fee } = req.body;
+    
+    if (!isConnected()) {
+        const docIndex = memUsers.findIndex(u => u.role === 'doctor' && u.id === req.params.id);
+        if (docIndex === -1) return res.status(404).json({ error: 'Doctor not found.' });
+        
+        if (age !== undefined) memUsers[docIndex].age = age;
+        if (experience !== undefined) memUsers[docIndex].experience = experience;
+        if (fee !== undefined) memUsers[docIndex].fee = fee;
+        
+        return res.status(200).json({ 
+            status: 'success', 
+            message: 'Profile updated successfully',
+            data: memUsers[docIndex] 
+        });
+    }
+
+    try {
+        const db = getSupabaseAdmin();
+        const updateData = {};
+        if (age !== undefined) updateData.age = age;
+        if (experience !== undefined) updateData.experience = experience;
+        if (fee !== undefined) updateData.fee = fee;
+        
+        if (Object.keys(updateData).length === 0) {
+            return res.status(400).json({ error: 'No data provided to update.' });
+        }
+
+        const { data, error } = await db
+            .from('users')
+            .update(updateData)
+            .eq('id', req.params.id)
+            .eq('role', 'doctor')
+            .select()
+            .maybeSingle();
+
+        if (error) throw error;
+        
+        if (!data) {
+            return res.status(404).json({ error: 'Doctor account not found in the database. You might be using an old session. Please sign out and create a new account.' });
+        }
+        
+        res.status(200).json({ status: 'success', message: 'Profile updated successfully', data });
+    } catch (err) {
+        console.error('Update doctor error:', err);
+        res.status(500).json({ error: 'Server error updating doctor profile. Details: ' + err.message });
+    }
+});
+
 module.exports = router;

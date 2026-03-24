@@ -110,6 +110,11 @@ function populateUserInfo() {
     const initials = displayName.replace('Dr. ', '').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
     document.getElementById('user-avatar').textContent = initials || 'DR';
     document.getElementById('sidebar-name').textContent = displayName;
+    
+    const username = localStorage.getItem('username');
+    if (document.getElementById('sidebar-username') && username) {
+        document.getElementById('sidebar-username').textContent = `ID: ${username}`;
+    }
 }
 
 // ── Sidebar Navigation ──
@@ -495,6 +500,9 @@ function renderSettings() {
     const panel = document.getElementById('view-settings');
     const email = localStorage.getItem('userEmail') || '';
     const name = localStorage.getItem('userName') || '';
+    const age = localStorage.getItem('userAge') || '';
+    const exp = localStorage.getItem('userExperience') || '';
+    const fee = localStorage.getItem('userFee') || '';
 
     panel.innerHTML = `
         <h2 style="font-family:'Poppins',sans-serif;font-size:22px;font-weight:700;margin-bottom:20px;">Settings</h2>
@@ -505,9 +513,77 @@ function renderSettings() {
                     <input disabled value="${name}" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;"></div>
                 <div><label style="font-size:13px;font-weight:500;color:#64748b;display:block;margin-bottom:4px;">Email</label>
                     <input disabled value="${email}" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;"></div>
-                <button onclick="logout()" style="padding:12px;border:1px solid #ef4444;border-radius:10px;color:#ef4444;background:#fff;font-weight:600;cursor:pointer;">Sign Out</button>
+                
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                    <div><label style="font-size:13px;font-weight:500;color:#64748b;display:block;margin-bottom:4px;">Age</label>
+                        <input id="settings-age" type="number" value="${age}" placeholder="e.g. 35" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;"></div>
+                    <div><label style="font-size:13px;font-weight:500;color:#64748b;display:block;margin-bottom:4px;">Experience (Years)</label>
+                        <input id="settings-exp" type="number" value="${exp}" placeholder="e.g. 10" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;"></div>
+                </div>
+                <div><label style="font-size:13px;font-weight:500;color:#64748b;display:block;margin-bottom:4px;">Consultation Fee (₹)</label>
+                    <input id="settings-fee" type="number" value="${fee}" placeholder="e.g. 500" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;"></div>
+
+                <div style="margin-top:10px;">
+                    <button id="btn-save-settings" onclick="saveDoctorProfile()" style="width:100%;padding:12px;border:none;border-radius:10px;color:#fff;background:var(--grad-brand);font-weight:600;cursor:pointer;margin-bottom:10px;transition:0.3s;">Save Changes</button>
+                    <button onclick="logout()" style="width:100%;padding:12px;border:1px solid #ef4444;border-radius:10px;color:#ef4444;background:#fff;font-weight:600;cursor:pointer;">Sign Out</button>
+                </div>
             </div>
         </div>`;
+}
+
+async function saveDoctorProfile() {
+    const btn = document.getElementById('btn-save-settings');
+    const age = document.getElementById('settings-age').value;
+    const exp = document.getElementById('settings-exp').value;
+    const fee = document.getElementById('settings-fee').value;
+    const userId = localStorage.getItem('userId');
+
+    if (!userId) {
+        alert('User ID is missing. Please sign out and sign in again.');
+        return;
+    }
+
+    const payload = {};
+    if (age !== '') payload.age = parseInt(age, 10);
+    if (exp !== '') payload.experience = parseInt(exp, 10);
+    if (fee !== '') payload.fee = parseInt(fee, 10);
+
+    const originalText = btn.innerText;
+    btn.innerText = 'Saving...';
+    btn.disabled = true;
+
+    try {
+        const response = await fetch(`http://localhost:3000/api/doctors/${userId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+        
+        if (response.ok) {
+            btn.innerText = 'Saved!';
+            btn.style.background = '#27ae60';
+            
+            // Update local storage so it persists on reload
+            if (payload.age !== undefined) localStorage.setItem('userAge', payload.age);
+            if (payload.experience !== undefined) localStorage.setItem('userExperience', payload.experience);
+            if (payload.fee !== undefined) localStorage.setItem('userFee', payload.fee);
+        } else {
+            alert(data.error || 'Failed to save settings.');
+            btn.innerText = originalText;
+        }
+    } catch (err) {
+        console.error('Save error:', err);
+        alert('Server error while saving.');
+        btn.innerText = originalText;
+    }
+
+    setTimeout(() => {
+        btn.innerText = originalText;
+        btn.style.background = 'var(--grad-brand)';
+        btn.disabled = false;
+    }, 2000);
 }
 
 // ── Modal ──

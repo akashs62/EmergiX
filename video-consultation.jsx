@@ -1,5 +1,5 @@
 const { useState, useEffect, useMemo } = React;
-const API_Base = window.EmergiXConfig ? window.EmergiXConfig.API_BASE_URL : '';
+const API_Base = window.EmergiXConfig ? window.EmergiXConfig.API_BASE_URL : 'http://127.0.0.1:3000'; // Global config for API base, defaulting to hitting the backend explicitly if config is missing
 
 const VideoConsultationPage = () => {
     const [doctors, setDoctors] = useState([]);

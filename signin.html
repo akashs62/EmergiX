@@ -488,7 +488,6 @@
 
     <main class="auth-shell" aria-label="Sign in panel">
         <section class="auth-intro" aria-hidden="true">
-            <div class="intro-kicker">Emergency Network</div>
             <h2>Care teams connected in real time.</h2>
             <p>Access consultations, dispatch alerts, and patient updates from one secure platform designed for urgent care workflows.</p>
             <div class="intro-points">
@@ -552,8 +551,8 @@
             </div>
 
             <div class="form-group">
-                <label for="email" class="form-label">Email Address</label>
-                <input type="email" id="email" class="form-input" placeholder="you@example.com" required>
+                <label for="email" class="form-label">Email Address or User ID</label>
+                <input type="text" id="email" class="form-input" placeholder="you@example.com or DOC-12345" required>
             </div>
 
             <div class="form-group">
@@ -586,8 +585,7 @@
             </div>
 
             <div class="forgot-wrap">
-                <a href="#" class="forgot-link">Forgot
-                    Password?</a>
+                <a href="#" class="forgot-link" onclick="openForgotModal(); return false;">Forgot Password?</a>
             </div>
 
             <button type="submit" id="submit-btn" class="auth-btn">Sign In</button>
@@ -711,10 +709,17 @@
 
                 if (response.ok) {
                     localStorage.setItem('token', data.token);
+                    localStorage.setItem('userId', data.user.id || '');
+                    localStorage.setItem('username', data.user.username || '');
                     localStorage.setItem('userEmail', data.user.email);
                     localStorage.setItem('userRole', data.user.role || 'patient');
                     if (data.user.name) localStorage.setItem('userName', data.user.name);
                     if (data.user.fleetId) localStorage.setItem('ambulanceFleetId', data.user.fleetId);
+                    if (data.user.licenseNo) localStorage.setItem('licenseNo', data.user.licenseNo);
+                    if (data.user.specialization) localStorage.setItem('specialization', data.user.specialization);
+                    if (data.user.age !== undefined) localStorage.setItem('userAge', data.user.age);
+                    if (data.user.experience !== undefined) localStorage.setItem('userExperience', data.user.experience);
+                    if (data.user.fee !== undefined) localStorage.setItem('userFee', data.user.fee);
 
                     button.style.background = r.successColor;
                     button.innerText = 'Success!';
@@ -749,8 +754,138 @@
             });
         }
 
+        // Forgot Password Logic
+        function openForgotModal() {
+            document.getElementById('modalForgot').classList.add('open');
+            document.getElementById('step-1').style.display = 'block';
+            document.getElementById('step-2').style.display = 'none';
+        }
+
+        function closeForgotModal() {
+            document.getElementById('modalForgot').classList.remove('open');
+            document.getElementById('forgot-msg').style.display = 'none';
+            document.getElementById('forgot-msg-2').style.display = 'none';
+        }
+
+        async function requestOTP(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btn-get-otp');
+            const email = document.getElementById('forgotEmail').value.trim();
+            const role = currentRole; 
+
+            btn.disabled = true;
+            btn.innerText = 'Sending...';
+
+            try {
+                const res = await fetch('http://localhost:3000/api/auth/request-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, role })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    document.getElementById('step-1').style.display = 'none';
+                    document.getElementById('step-2').style.display = 'block';
+                    document.getElementById('forgot-msg').style.display = 'none';
+                } else {
+                    const msg = document.getElementById('forgot-msg');
+                    msg.style.display = 'block';
+                    msg.className = 'error-message';
+                    msg.innerText = data.error || 'Failed to send OTP.';
+                }
+            } catch (err) {
+                const msg = document.getElementById('forgot-msg');
+                msg.style.display = 'block';
+                msg.className = 'error-message';
+                msg.innerText = 'Network error.';
+            } finally {
+                btn.disabled = false;
+                btn.innerText = 'Send OTP';
+            }
+        }
+
+        async function resetPassword(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btn-reset-pass');
+            const email = document.getElementById('forgotEmail').value.trim();
+            const otp = document.getElementById('forgotOtp').value.trim();
+            const newPassword = document.getElementById('forgotNewPass').value;
+            const role = currentRole;
+
+            btn.disabled = true;
+            btn.innerText = 'Resetting...';
+
+            try {
+                const res = await fetch('http://localhost:3000/api/auth/reset-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, role, otp, newPassword })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    alert('Password updated successfully. You can now sign in.');
+                    closeForgotModal();
+                    document.getElementById('password').value = newPassword;
+                } else {
+                    const msg = document.getElementById('forgot-msg-2');
+                    msg.style.display = 'block';
+                    msg.className = 'error-message';
+                    msg.innerText = data.error || 'Failed to reset password.';
+                }
+            } catch (err) {
+                const msg = document.getElementById('forgot-msg-2');
+                msg.style.display = 'block';
+                msg.className = 'error-message';
+                msg.innerText = 'Network error.';
+            } finally {
+                btn.disabled = false;
+                btn.innerText = 'Reset Password';
+            }
+        }
 
     </script>
+
+    <!-- ============================= MODAL: FORGOT PASSWORD ============================= -->
+    <div class="modal-overlay" id="modalForgot" role="dialog" aria-modal="true" aria-labelledby="modalForgotTitle">
+        <div class="modal-box" style="text-align: left;">
+            <button class="modal-close-btn" type="button" onclick="closeForgotModal()" aria-label="Close">✕</button>
+            <div class="modal-icon-wrap brand-wrap" style="background:#EEF6FF; color:#2B7FFF; border-radius:12px; display:inline-flex; padding:12px; margin-bottom:12px;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <rect x="2" y="11" width="20" height="11" rx="2" stroke="currentColor" stroke-width="2"/>
+                    <path d="M7 11V7a5 5 0 0110 0v4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </div>
+            <h2 id="modalForgotTitle" class="modal-title" style="margin-bottom:8px; font-family:'Sora', sans-serif; font-size:24px;">Reset Password</h2>
+            
+            <div id="step-1">
+                <p class="modal-sub" style="margin-bottom:20px; color:var(--muted); font-size:14px;">Enter your email and we'll send you an OTP.</p>
+                <form onsubmit="requestOTP(event)">
+                    <div id="forgot-msg" class="error-message" style="display:none; margin-bottom:15px; padding:11px; background:#fff1f2; color:#dc2626; border:1px solid #fecdd3; border-radius:10px;"></div>
+                    <div class="form-group" style="margin-bottom:20px;">
+                        <label for="forgotEmail" class="form-label" style="display:block; font-size:14px; margin-bottom:6px; font-weight:500;">Email Address</label>
+                        <input type="email" id="forgotEmail" class="form-input" placeholder="you@example.com" required style="width:100%; padding:11px 13px; border:1px solid var(--border); border-radius:10px;">
+                    </div>
+                    <button type="submit" id="btn-get-otp" class="auth-btn" style="width:100%; padding:12px; border:none; border-radius:10px; background:var(--active-gradient, var(--grad-brand)); color:white; font-weight:700; cursor:pointer;">Send OTP</button>
+                </form>
+            </div>
+
+            <div id="step-2" style="display:none;">
+                <p class="modal-sub" style="margin-bottom:20px; color:var(--muted); font-size:14px;">Enter the OTP sent to your email and your new password.</p>
+                <form onsubmit="resetPassword(event)">
+                    <div id="forgot-msg-2" class="error-message" style="display:none; margin-bottom:15px; padding:11px; background:#fff1f2; color:#dc2626; border:1px solid #fecdd3; border-radius:10px;"></div>
+                    <div class="form-group" style="margin-bottom:15px;">
+                        <label for="forgotOtp" class="form-label" style="display:block; font-size:14px; margin-bottom:6px; font-weight:500;">OTP code</label>
+                        <input type="text" id="forgotOtp" class="form-input" placeholder="123456" required style="width:100%; padding:11px 13px; border:1px solid var(--border); border-radius:10px;">
+                    </div>
+                    <div class="form-group" style="margin-bottom:20px;">
+                        <label for="forgotNewPass" class="form-label" style="display:block; font-size:14px; margin-bottom:6px; font-weight:500;">New Password</label>
+                        <input type="password" id="forgotNewPass" class="form-input" placeholder="••••••••" minlength="6" required style="width:100%; padding:11px 13px; border:1px solid var(--border); border-radius:10px;">
+                    </div>
+                    <button type="submit" id="btn-reset-pass" class="auth-btn" style="width:100%; padding:12px; border:none; border-radius:10px; background:var(--active-gradient, var(--grad-brand)); color:white; font-weight:700; cursor:pointer;">Reset Password</button>
+                </form>
+            </div>
+        </div>
+    </div>
 </body>
 
 </html>

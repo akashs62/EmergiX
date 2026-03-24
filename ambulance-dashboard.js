@@ -85,6 +85,11 @@ function populateUserInfo() {
     const initials = displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
     document.getElementById('user-avatar').textContent = initials || 'AF';
     document.getElementById('sidebar-name').textContent = displayName;
+    
+    const username = localStorage.getItem('username');
+    if (document.getElementById('sidebar-username') && username) {
+        document.getElementById('sidebar-username').textContent = `ID: ${username}`;
+    }
 }
 
 // ── Sidebar Navigation ──

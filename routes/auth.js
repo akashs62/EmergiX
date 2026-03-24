@@ -20,6 +20,12 @@ const normalizeEmail = (val) => {
     return val.trim().toLowerCase();
 };
 
+const generateUsername = (role) => {
+    const prefix = role === 'doctor' ? 'DOC' : role === 'ambulance' ? 'AMB' : 'PAT';
+    const random = Math.floor(10000 + Math.random() * 90000);
+    return `${prefix}-${random}`;
+};
+
 const normalizeRole = (val) => {
     const validRoles = ['patient', 'doctor', 'ambulance'];
     if (!val || typeof val !== 'string') return 'patient';
@@ -44,6 +50,7 @@ router.post('/signup', async (req, res) => {
     const { name, email, password, role = 'patient', licenseNo, specialization, fleetId, fleetName } = req.body;
     const cleanEmail = normalizeEmail(email);
     const cleanRole = normalizeRole(role);
+    const newUsername = generateUsername(cleanRole);
 
     const validationError = validateSignup(req.body, cleanRole);
     if (validationError) return res.status(400).json({ error: validationError });
@@ -68,6 +75,7 @@ router.post('/signup', async (req, res) => {
                 .insert({
                     name: name.trim(),
                     email: cleanEmail,
+                    username: newUsername,
                     password_hash: passwordHash,
                     role: cleanRole,
                     license_no: cleanRole === 'doctor' ? licenseNo?.trim() : null,
@@ -75,12 +83,12 @@ router.post('/signup', async (req, res) => {
                     fleet_id: cleanRole === 'ambulance' ? fleetId?.trim() : null,
                     fleet_name: cleanRole === 'ambulance' ? fleetName?.trim() : null,
                 })
-                .select('id, name, email, role')
+                .select('id, name, email, username, role')
                 .single();
 
             if (error) throw error;
 
-            const token = signToken({ id: user.id, email: user.email, role: user.role, name: user.name });
+            const token = signToken({ id: user.id, email: user.email, username: user.username, role: user.role, name: user.name });
             return res.status(201).json({ status: 'success', token, user });
 
         } else {
@@ -120,16 +128,18 @@ router.post('/signup', async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 router.post('/signin', async (req, res) => {
     const { email, password } = req.body;
-    const cleanEmail = normalizeEmail(email);
-    if (!email || !password) return res.status(400).json({ error: 'Email and password are required.' });
+    const cleanId = String(email).trim();
+    const cleanEmail = cleanId.toLowerCase();
+    const cleanUsername = cleanId.toUpperCase();
+    if (!email || !password) return res.status(400).json({ error: 'Email or User ID and password are required.' });
 
     try {
         if (isDBConnected()) {
             const db = getSupabaseAdmin();
             const { data: user } = await db
                 .from('users')
-                .select('id, name, email, role, password_hash')
-                .eq('email', cleanEmail)
+                .select('id, name, email, username, role, password_hash')
+                .or(`email.eq.${cleanEmail},username.eq.${cleanUsername}`)
                 .eq('role', 'patient')
                 .maybeSingle();
 
@@ -167,8 +177,10 @@ router.post('/signin', async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 router.post('/doctor/signin', async (req, res) => {
     const { email, password, licenseNo } = req.body;
-    const cleanEmail = normalizeEmail(email);
-    if (!email || !password) return res.status(400).json({ error: 'Email and password are required.' });
+    const cleanId = String(email).trim();
+    const cleanEmail = cleanId.toLowerCase();
+    const cleanUsername = cleanId.toUpperCase();
+    if (!email || !password) return res.status(400).json({ error: 'Email or User ID and password are required.' });
     if (!licenseNo?.trim()) return res.status(400).json({ error: 'Medical License Number is required.' });
 
     try {
@@ -176,8 +188,8 @@ router.post('/doctor/signin', async (req, res) => {
             const db = getSupabaseAdmin();
             const { data: user } = await db
                 .from('users')
-                .select('id, name, email, role, password_hash, license_no, specialization')
-                .eq('email', cleanEmail)
+                .select('id, name, email, username, role, password_hash, license_no, specialization, age, experience, fee')
+                .or(`email.eq.${cleanEmail},username.eq.${cleanUsername}`)
                 .eq('role', 'doctor')
                 .maybeSingle();
 
@@ -188,10 +200,10 @@ router.post('/doctor/signin', async (req, res) => {
                 return res.status(401).json({ error: 'Incorrect medical license number.' });
             }
 
-            const token = signToken({ id: user.id, email: user.email, role: 'doctor', name: user.name, licenseNo: user.license_no });
+            const token = signToken({ id: user.id, email: user.email, username: user.username, role: 'doctor', name: user.name, licenseNo: user.license_no });
             return res.status(200).json({
                 status: 'success', token,
-                user: { id: user.id, name: user.name, email: user.email, role: 'doctor', licenseNo: user.license_no, specialization: user.specialization }
+                user: { id: user.id, name: user.name, email: user.email, username: user.username, role: 'doctor', licenseNo: user.license_no, specialization: user.specialization, age: user.age, experience: user.experience, fee: user.fee }
             });
         } else {
             // Demo fallback — check if user exists in memUsers, otherwise generate demo data
@@ -205,11 +217,14 @@ router.post('/doctor/signin', async (req, res) => {
             const spec = stored ? stored.specialization : 'Emergency Medicine';
             const id = stored ? stored.id : `doc_${Date.now()}`;
             const lic = stored ? stored.license_no : licenseNo;
+            const age = stored ? stored.age : '';
+            const exp = stored ? stored.experience : 5;
+            const fee = stored ? stored.fee : 500;
 
             const token = signToken({ id, email: cleanEmail, role: 'doctor', name, licenseNo: lic });
             return res.status(200).json({
                 status: 'success', token,
-                user: { id, email: cleanEmail, role: 'doctor', name, licenseNo: lic, specialization: spec }
+                user: { id, email: cleanEmail, role: 'doctor', name, licenseNo: lic, specialization: spec, age, experience: exp, fee }
             });
         }
     } catch (err) {
@@ -223,8 +238,10 @@ router.post('/doctor/signin', async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 router.post('/ambulance/signin', async (req, res) => {
     const { email, password, fleetId } = req.body;
-    const cleanEmail = normalizeEmail(email);
-    if (!email || !password) return res.status(400).json({ error: 'Email and password are required.' });
+    const cleanId = String(email).trim();
+    const cleanEmail = cleanId.toLowerCase();
+    const cleanUsername = cleanId.toUpperCase();
+    if (!email || !password) return res.status(400).json({ error: 'Email or User ID and password are required.' });
     if (!fleetId?.trim()) return res.status(400).json({ error: 'Fleet Registration ID is required.' });
 
     try {
@@ -232,8 +249,8 @@ router.post('/ambulance/signin', async (req, res) => {
             const db = getSupabaseAdmin();
             const { data: user } = await db
                 .from('users')
-                .select('id, name, email, role, password_hash, fleet_id, fleet_name')
-                .eq('email', cleanEmail)
+                .select('id, name, email, username, role, password_hash, fleet_id, fleet_name')
+                .or(`email.eq.${cleanEmail},username.eq.${cleanUsername}`)
                 .eq('role', 'ambulance')
                 .maybeSingle();
 
@@ -244,10 +261,10 @@ router.post('/ambulance/signin', async (req, res) => {
                 return res.status(401).json({ error: 'Incorrect fleet registration ID.' });
             }
 
-            const token = signToken({ id: user.id, email: user.email, role: 'ambulance', name: user.name, fleetId: user.fleet_id });
+            const token = signToken({ id: user.id, email: user.email, username: user.username, role: 'ambulance', name: user.name, fleetId: user.fleet_id });
             return res.status(200).json({
                 status: 'success', token,
-                user: { id: user.id, name: user.name, email: user.email, role: 'ambulance', fleetId: user.fleet_id, fleetName: user.fleet_name }
+                user: { id: user.id, name: user.name, email: user.email, username: user.username, role: 'ambulance', fleetId: user.fleet_id, fleetName: user.fleet_name }
             });
         } else {
             // Demo fallback — check if user exists in memUsers, otherwise generate demo data

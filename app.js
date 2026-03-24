@@ -11,15 +11,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const authHeaderContainer = document.getElementById('auth-header-container');
     const token = localStorage.getItem('token');
     const userEmail = localStorage.getItem('userEmail');
+    const username = localStorage.getItem('username');
 
     if (token && userEmail && authHeaderContainer) {
-        // Strip the email for username, or just show the email
-        const username = userEmail.split('@')[0];
+        const displayName = localStorage.getItem('userName') || userEmail.split('@')[0];
+        const displayUsername = username ? `<br><small style="color: #64748b; font-size: 11px;">ID: ${username}</small>` : '';
 
         authHeaderContainer.innerHTML = `
             <div style="display: flex; align-items: center; gap: 12px;">
-                <span style="color: #2B7FFF; font-weight: 600; font-size: 14px;">
-                    Hi, <strong style="color: #2B7FFF;">${username}</strong>
+                <span style="color: #2B7FFF; font-weight: 600; font-size: 14px; line-height: 1.2;">
+                    Hi, <strong style="color: #2B7FFF;">${displayName.split(' ')[0]}</strong>
+                    ${displayUsername}
                 </span>
                 <button onclick="logout()" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #EF4444; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 600; transition: all 0.2s;"
                 onmouseover="this.style.background='rgba(239, 68, 68, 0.2)'; this.style.color='#DC2626'" onmouseout="this.style.background='rgba(239, 68, 68, 0.1)'; this.style.color='#EF4444'">
@@ -33,6 +35,10 @@ document.addEventListener('DOMContentLoaded', () => {
 window.logout = function () {
     localStorage.removeItem('token');
     localStorage.removeItem('userEmail');
+    localStorage.removeItem('username');
+    localStorage.removeItem('userId');
+    localStorage.removeItem('userName');
+    localStorage.removeItem('userRole');
     window.location.reload();
 };
 

@@ -344,7 +344,7 @@ body::after {
    ============================================================ */
 .hero {
     position: relative;
-    padding: 140px 24px 0;
+    padding: 100px 24px 0;
     background:
         radial-gradient(ellipse at 15% 60%, rgba(34,201,105,0.22), transparent 45%),
         radial-gradient(ellipse at 85% 30%, rgba(43,127,255,0.25), transparent 45%),
@@ -622,6 +622,7 @@ body::after {
     align-items: center;
     justify-content: center;
     min-height: 380px;
+    margin-top: -120px;
 }
 
 .hero-center-art {

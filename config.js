@@ -11,7 +11,7 @@ const EmergiXConfig = (() => {
 
     // By default, use same-origin API in production, and localhost in local dev.
     const PRODUCTION_API_URL = ''; 
-    const LOCAL_API_URL = 'http://localhost:3000';
+    const LOCAL_API_URL = 'http://127.0.0.1:3000';
     
     // Determine the base URL. If we are local, use the local URL. 
     // If we are in production but don't have a URL set, it defaults to same-origin.
