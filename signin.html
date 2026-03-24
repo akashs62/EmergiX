@@ -377,6 +377,44 @@
             text-decoration: underline;
         }
 
+        /* ── Divider & Google Button ── */
+        .divider {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            margin: 20px 0;
+            color: var(--muted);
+            font-size: 13px;
+        }
+        .divider::before, .divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid var(--border);
+        }
+        .divider span {
+            padding: 0 10px;
+        }
+        .google-btn {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: #fff;
+            color: var(--dark);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: background 0.2s, border-color 0.2s;
+        }
+        .google-btn:hover {
+            background: #f8fafc;
+            border-color: #cbd5e1;
+        }
+
         /* ── Role-specific Fields (slide animation) ── */
         .role-extra-fields {
             max-height: 0;
@@ -589,6 +627,19 @@
             </div>
 
             <button type="submit" id="submit-btn" class="auth-btn">Sign In</button>
+
+            <div class="divider">
+                <span>or</span>
+            </div>
+            <button type="button" class="google-btn" onclick="openGoogleModal()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                </svg>
+                Continue with Google
+            </button>
         </form>
 
         <div class="auth-footer">
@@ -690,13 +741,13 @@
             }
 
             try {
-                let endpoint = 'http://localhost:3000/api/auth/signin';
+                let endpoint = 'https://emergi-x.vercel.app/api/auth/signin';
                 let payload = { email, password };
                 if (currentRole === 'doctor') {
-                    endpoint = 'http://localhost:3000/api/auth/doctor/signin';
+                    endpoint = 'https://emergi-x.vercel.app/api/auth/doctor/signin';
                     payload.licenseNo = license;
                 } else if (currentRole === 'ambulance') {
-                    endpoint = 'http://localhost:3000/api/auth/ambulance/signin';
+                    endpoint = 'https://emergi-x.vercel.app/api/auth/ambulance/signin';
                     payload.fleetId = fleetId;
                 }
 
@@ -777,7 +828,7 @@
             btn.innerText = 'Sending...';
 
             try {
-                const res = await fetch('http://localhost:3000/api/auth/request-otp', {
+                const res = await fetch('https://emergi-x.vercel.app/api/auth/request-otp', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, role })
@@ -816,7 +867,7 @@
             btn.innerText = 'Resetting...';
 
             try {
-                const res = await fetch('http://localhost:3000/api/auth/reset-password', {
+                const res = await fetch('https://emergi-x.vercel.app/api/auth/reset-password', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, role, otp, newPassword })
@@ -842,6 +893,96 @@
                 btn.innerText = 'Reset Password';
             }
         }
+
+        // Real Google Sign-In Logic via Supabase OAuth
+        function openGoogleModal() {
+            // Save the selected role before redirecting
+            localStorage.setItem('pendingGoogleRole', currentRole || 'patient');
+            
+            // Redirect to Supabase Google OAuth endpoint
+            const supabaseUrl = 'https://jukrbkgjykaqxgsdixnf.supabase.co';
+            const redirectUrl = encodeURIComponent(window.location.origin + '/signin.html');
+            window.location.href = `${supabaseUrl}/auth/v1/authorize?provider=google&redirect_to=${redirectUrl}`;
+        }
+
+        // Check for Supabase OAuth response in URL hash when page loads
+        window.addEventListener('DOMContentLoaded', async () => {
+            const hash = window.location.hash;
+            if (hash && hash.includes('access_token=')) {
+                // Parse the hash fragment
+                const params = new URLSearchParams(hash.substring(1));
+                const accessToken = params.get('access_token');
+                
+                if (accessToken) {
+                    // Show a loading state on the button
+                    const submitBtn = document.getElementById('submit-btn');
+                    if (submitBtn) {
+                        submitBtn.innerText = 'Authenticating with Google...';
+                        submitBtn.disabled = true;
+                    }
+                    
+                    try {
+                        // 1. Fetch user profile from Supabase using the access token
+                        const supabaseUrl = 'https://jukrbkgjykaqxgsdixnf.supabase.co';
+                        const anonKey = 'sb_publishable_evHc2z1W1wImkd4PkFnmGg_bE6Kz2gf';
+                        
+                        const userRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
+                            headers: {
+                                'Authorization': `Bearer ${accessToken}`,
+                                'apikey': anonKey
+                            }
+                        });
+                        
+                        const userData = await userRes.json();
+                        
+                        if (userRes.ok && userData.email) {
+                            const email = userData.email;
+                            const name = userData.user_metadata?.full_name || email.split('@')[0];
+                            const role = localStorage.getItem('pendingGoogleRole') || 'patient';
+                            
+                            // 2. Exchange with our Custom Backend to get JWT
+                            const API_URL = window.EmergiXConfig ? window.EmergiXConfig.API_BASE_URL : 'https://emergi-x.vercel.app';
+                            const beRes = await fetch(`${API_URL}/api/auth/google`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ email, name, role })
+                            });
+                            
+                            const data = await beRes.json();
+                            
+                            if (beRes.ok) {
+                                localStorage.setItem('token', data.token);
+                                localStorage.setItem('userId', data.user.id || '');
+                                localStorage.setItem('userEmail', data.user.email);
+                                localStorage.setItem('userRole', data.user.role || 'patient');
+                                if (data.user.name) localStorage.setItem('userName', data.user.name);
+                                
+                                // Clear the hash from the URL
+                                history.replaceState(null, null, ' ');
+                                
+                                // Redirect to dashboard
+                                const r = ROLES[role] || ROLES['patient'];
+                                window.location.href = r.redirect;
+                            } else {
+                                alert(data.error || 'Failed to authenticate with backend.');
+                            }
+                        } else {
+                            alert('Failed to retrieve user profile from Google.');
+                        }
+                    } catch (err) {
+                        console.error('OAuth handling error:', err);
+                        alert('Network error during Google authentication.');
+                    } finally {
+                        if (submitBtn) {
+                            submitBtn.innerText = 'Sign In';
+                            submitBtn.disabled = false;
+                        }
+                        // Clear the pending role
+                        localStorage.removeItem('pendingGoogleRole');
+                    }
+                }
+            }
+        });
 
     </script>
 

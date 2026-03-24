@@ -553,7 +553,7 @@ async function saveDoctorProfile() {
     btn.disabled = true;
 
     try {
-        const response = await fetch(`http://localhost:3000/api/doctors/${userId}`, {
+        const response = await fetch(`https://emergi-x.vercel.app/api/doctors/${userId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
