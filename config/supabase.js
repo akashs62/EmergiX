@@ -1,9 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
-
 let supabase = null;
 let supabaseAdmin = null;
 let _isConnected = false;
@@ -14,7 +10,11 @@ let _isConnected = false;
  * - supabaseAdmin  → uses service_role key (bypasses RLS for server-side writes)
  */
 const initSupabase = () => {
-    if (!SUPABASE_URL || SUPABASE_URL.includes('YOUR_PROJECT')) {
+    const SUPABASE_URL = process.env.SUPABASE_URL;
+    const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+    const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
+
+    if (!SUPABASE_URL || SUPABASE_URL.includes('YOUR_PROJECT') || SUPABASE_URL === 'your_supabase_url') {
         console.warn('⚠️  Supabase credentials not configured. Running in in-memory mock mode.');
         return false;
     }

@@ -7,8 +7,11 @@ const JWT_SECRET = process.env.JWT_SECRET || 'emergix-default-secret';
  * Reads the Bearer token from the Authorization header.
  */
 const protect = (req, res, next) => {
-    if (NODE_ENV === 'production' && JWT_SECRET === 'emergix-default-secret') {
-        return res.status(500).json({ error: 'Server auth is not configured securely.' });
+    if (NODE_ENV === 'production' && (JWT_SECRET === 'emergix-default-secret' || !process.env.JWT_SECRET)) {
+        return res.status(500).json({ 
+            error: 'Server auth is not configured securely.',
+            details: 'JWT_SECRET must be set in production environment variables.'
+        });
     }
 
     let token;
