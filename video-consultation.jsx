@@ -18,7 +18,23 @@ const VideoConsultationPage = () => {
 
     // Call UI State
     const [callTime, setCallTime] = useState(0);
+    const [isPaying, setIsPaying] = useState(false);
 
+    useEffect(() => {
+        // Check if we returned from Stripe success/cancel
+        const urlParams = new URLSearchParams(window.location.search);
+        const status = urlParams.get('status');
+        if (status === 'success') {
+            // In a real app, you'd verify the session on the backend here
+            setModalUI('call');
+            // Mock selecting the first doctor if none selected (e.g. on refresh)
+            // but usually session storage would handle this.
+            window.history.replaceState({}, document.title, window.location.pathname);
+        } else if (status === 'cancelled') {
+            alert('Payment was cancelled. Please try again.');
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    }, []);
     useEffect(() => {
         setLoading(true);
         setError(null);
@@ -79,8 +95,46 @@ const VideoConsultationPage = () => {
         window.location.href = `doctor-profile.html?id=${doc.id}`;
     };
 
-    const handleMockPayment = () => {
-        setModalUI('call');
+    const handleStripePayment = async () => {
+        if (!selectedDoc) return;
+        setIsPaying(true);
+        try {
+            // 1. Get the publishable key from our backend
+            const configRes = await fetch(`${API_Base}/api/payments/config`);
+            const { publishableKey } = await configRes.json();
+
+            if (!publishableKey || publishableKey.includes('CHANGE_ME')) {
+                throw new Error('Stripe is not fully configured. Please add your API keys to the .env file.');
+            }
+
+            const stripe = Stripe(publishableKey);
+
+            // 2. Create the checkout session
+            const sessionRes = await fetch(`${API_Base}/api/payments/create-checkout-session`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    doctorId: selectedDoc.id,
+                    patientName: patientInfo.name
+                })
+            });
+
+            const session = await sessionRes.json();
+            if (session.error) throw new Error(session.error);
+
+            // 3. Redirect to Stripe Checkout
+            const { error } = await stripe.redirectToCheckout({
+                sessionId: session.id,
+            });
+
+            if (error) throw new Error(error.message);
+
+        } catch (err) {
+            console.error('Payment Error:', err);
+            alert('Payment initialization failed: ' + err.message);
+        } finally {
+            setIsPaying(false);
+        }
     };
 
     const handleEndCall = () => {
@@ -248,10 +302,24 @@ const VideoConsultationPage = () => {
                                     <div style={{ fontSize: '3rem', fontWeight: '700', color: '#2B7FFF' }}>₹{selectedDoc.fee}</div>
                                 </div>
 
-                                <button className="vc-btn vc-btn-primary" onClick={handleMockPayment}>
-                                    Pay & Connect Now
+                                <button 
+                                    className="vc-btn vc-btn-primary" 
+                                    onClick={handleStripePayment}
+                                    disabled={isPaying}
+                                >
+                                    {isPaying ? (
+                                        <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                                            <div className="loader" style={{ width: '18px', height: '18px', borderSize: '2px' }}></div>
+                                            Processing...
+                                        </span>
+                                    ) : (
+                                        <>Pay & Connect with Stripe</>
+                                    )}
                                 </button>
-                                <button className="vc-btn" style={{ background: 'transparent', color: '#64748B', marginTop: '1rem' }} onClick={() => setModalUI('booking')}>Back</button>
+                                <div style={{ marginTop: '1rem', textAlign: 'center', opacity: 0.6, fontSize: '0.8rem' }}>
+                                    🔒 Secure payment powered by <strong>Stripe</strong>
+                                </div>
+                                <button className="vc-btn" style={{ background: 'transparent', color: '#64748B', marginTop: '0.5rem' }} onClick={() => setModalUI('booking')}>Back</button>
                             </>
                         )}
                     </div>

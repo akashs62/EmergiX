@@ -48,6 +48,7 @@ app.use('/api/appointments', require('./routes/appointments'));
 app.use('/api/doctors', require('./routes/doctors'));
 app.use('/api/reviews', require('./routes/reviews'));
 app.use('/api/stats', require('./routes/stats'));
+app.use('/api/payments', require('./routes/payments'));
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Health Check
