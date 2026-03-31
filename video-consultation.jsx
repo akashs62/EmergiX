@@ -21,19 +21,7 @@ const VideoConsultationPage = () => {
     const [isPaying, setIsPaying] = useState(false);
 
     useEffect(() => {
-        // Check if we returned from Stripe success/cancel
-        const urlParams = new URLSearchParams(window.location.search);
-        const status = urlParams.get('status');
-        if (status === 'success') {
-            // In a real app, you'd verify the session on the backend here
-            setModalUI('call');
-            // Mock selecting the first doctor if none selected (e.g. on refresh)
-            // but usually session storage would handle this.
-            window.history.replaceState({}, document.title, window.location.pathname);
-        } else if (status === 'cancelled') {
-            alert('Payment was cancelled. Please try again.');
-            window.history.replaceState({}, document.title, window.location.pathname);
-        }
+        // Stripe has been removed, Razorpay handles payments via overlay so no redirect checks are needed
     }, []);
     useEffect(() => {
         setLoading(true);
@@ -95,40 +83,55 @@ const VideoConsultationPage = () => {
         window.location.href = `doctor-profile.html?id=${doc.id}`;
     };
 
-    const handleStripePayment = async () => {
+    const handleRazorpayPayment = async () => {
         if (!selectedDoc) return;
         setIsPaying(true);
         try {
-            // 1. Get the publishable key from our backend
-            const configRes = await fetch(`${API_Base}/api/payments/config`);
-            const { publishableKey } = await configRes.json();
-
-            if (!publishableKey || publishableKey.includes('CHANGE_ME')) {
-                throw new Error('Stripe is not fully configured. Please add your API keys to the .env file.');
-            }
-
-            const stripe = Stripe(publishableKey);
-
-            // 2. Create the checkout session
-            const sessionRes = await fetch(`${API_Base}/api/payments/create-checkout-session`, {
+            // 1. Create order on backend (Consultation Fee dynamically provided, but backend can enforce it)
+            // Since selectedDoc.fee exists, we convert it to paise (multiply by 100)
+            const response = await fetch(`${API_Base}/api/razorpay/create-order`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    doctorId: selectedDoc.id,
-                    patientName: patientInfo.name
-                })
+                body: JSON.stringify({ amount: selectedDoc.fee * 100, receipt: `doc_${selectedDoc.id}` }) 
             });
+            const result = await response.json();
+            
+            if (!response.ok) throw new Error(result.error || 'Failed to create Razorpay order');
 
-            const session = await sessionRes.json();
-            if (session.error) throw new Error(session.error);
+            if (result.order.isMock) {
+                console.warn(result.message);
+                setTimeout(() => setModalUI('call'), 800);
+                return;
+            }
 
-            // 3. Redirect to Stripe Checkout
-            const { error } = await stripe.redirectToCheckout({
-                sessionId: session.id,
-            });
-
-            if (error) throw new Error(error.message);
-
+            // 2. Open Razorpay Widget
+            const options = {
+                key: result.keyId || 'rzp_test_CHANGE_ME', // Dynamic from backend
+                amount: result.order.amount,
+                currency: result.order.currency,
+                name: 'EmergiX Video Consult',
+                description: `Consultation with ${selectedDoc.name}`,
+                order_id: result.order.id,
+                prefill: {
+                    name: patientInfo.name,
+                    contact: patientInfo.phone
+                },
+                handler: function (response) {
+                    console.log("Consultation Payment Success:", response);
+                    setModalUI('call'); // Transition directly to call without page refresh
+                },
+                theme: { color: '#0284C7' }
+            };
+            
+            if (window.Razorpay) {
+                const rzp = new window.Razorpay(options);
+                rzp.on('payment.failed', function (response) {
+                    alert('Payment failed. Please try again.');
+                });
+                rzp.open();
+            } else {
+                alert('Razorpay SDK failed to load. Are you connected to the internet?');
+            }
         } catch (err) {
             console.error('Payment Error:', err);
             alert('Payment initialization failed: ' + err.message);
@@ -304,8 +307,9 @@ const VideoConsultationPage = () => {
 
                                 <button 
                                     className="vc-btn vc-btn-primary" 
-                                    onClick={handleStripePayment}
+                                    onClick={handleRazorpayPayment}
                                     disabled={isPaying}
+                                    style={{ background: '#0284C7', borderColor: '#0284C7' }}
                                 >
                                     {isPaying ? (
                                         <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
@@ -313,11 +317,11 @@ const VideoConsultationPage = () => {
                                             Processing...
                                         </span>
                                     ) : (
-                                        <>Pay & Connect with Stripe</>
+                                        <>Pay & Connect with Razorpay</>
                                     )}
                                 </button>
                                 <div style={{ marginTop: '1rem', textAlign: 'center', opacity: 0.6, fontSize: '0.8rem' }}>
-                                    🔒 Secure payment powered by <strong>Stripe</strong>
+                                    🔒 Secure payment powered by <strong>Razorpay</strong>
                                 </div>
                                 <button className="vc-btn" style={{ background: 'transparent', color: '#64748B', marginTop: '0.5rem' }} onClick={() => setModalUI('booking')}>Back</button>
                             </>

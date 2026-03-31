@@ -14,7 +14,7 @@ const EMERGENCY_TYPES = [
 
 const DirectBookingForm = ({ onBack, onConfirm }) => {
     const [formData, setFormData] = useState({
-        name: '', phone: '', location: '', type: 'other', ambType: 'BLS'
+        name: '', phone: '', location: '', type: 'other', ambType: 'BLS', weight: '', helper: false
     });
     const [isDetecting, setIsDetecting] = useState(false);
     const [detectError, setDetectError] = useState(null);
@@ -32,7 +32,6 @@ const DirectBookingForm = ({ onBack, onConfirm }) => {
             async (position) => {
                 const { latitude, longitude } = position.coords;
                 try {
-                    // Reverse Geocoding using Nominatim (OpenStreetMap)
                     const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`);
                     const data = await response.json();
                     const address = data.display_name || `${latitude}, ${longitude}`;
@@ -77,10 +76,17 @@ const DirectBookingForm = ({ onBack, onConfirm }) => {
                             value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
                     </div>
 
-                    <div className="ad-form-group">
-                        <label className="ad-label">Contact Number</label>
-                        <input className="ad-input" type="tel" placeholder="+91" required
-                            value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} />
+                    <div style={{ display: 'flex', gap: '1rem' }}>
+                        <div className="ad-form-group" style={{ flex: 2 }}>
+                            <label className="ad-label">Contact Number</label>
+                            <input className="ad-input" type="tel" placeholder="+91" required
+                                value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} />
+                        </div>
+                        <div className="ad-form-group" style={{ flex: 1 }}>
+                            <label className="ad-label">Patient Weight (kg)</label>
+                            <input className="ad-input" type="number" placeholder="e.g. 70"
+                                value={formData.weight} onChange={e => setFormData({ ...formData, weight: e.target.value })} />
+                        </div>
                     </div>
 
                     <div className="ad-form-group">
@@ -96,7 +102,7 @@ const DirectBookingForm = ({ onBack, onConfirm }) => {
                         {detectError && <div style={{ color: '#DC2626', fontSize: '0.75rem', marginTop: '0.25rem' }}>{detectError}</div>}
                     </div>
 
-                    <div style={{ display: 'flex', gap: '1rem' }}>
+                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end' }}>
                         <div className="ad-form-group" style={{ flex: 1 }}>
                             <label className="ad-label">Emergency Type</label>
                             <select className="ad-select" value={formData.type} onChange={e => setFormData({ ...formData, type: e.target.value })}>
@@ -113,6 +119,17 @@ const DirectBookingForm = ({ onBack, onConfirm }) => {
                         </div>
                     </div>
 
+                    <div className="ad-form-group" style={{ marginBottom: '1.5rem' }}>
+                        <label className="ad-checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', background: '#F8FAFC', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+                            <input type="checkbox" checked={formData.helper} onChange={e => setFormData({ ...formData, helper: e.target.checked })}
+                                style={{ width: '18px', height: '18px', cursor: 'pointer' }} />
+                            <div>
+                                <div style={{ fontWeight: 600, color: '#1E293B', fontSize: '0.9rem' }}>Is Helper Needed?</div>
+                                <div style={{ fontSize: '0.75rem', color: '#64748B' }}>Check if an additional assistant is required for lifting/moving the patient.</div>
+                            </div>
+                        </label>
+                    </div>
+
                     <div style={{ background: '#EEF6FF', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem', color: '#1E40AF', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <span>⚡</span> ETA to your location: <strong>~6 mins</strong>
                     </div>
@@ -124,83 +141,77 @@ const DirectBookingForm = ({ onBack, onConfirm }) => {
     );
 };
 
-// AI Triage Q&A definitions
-const TRIAGE_QUESTIONS = [
-    { id: 'q1', text: 'Is the patient conscious?', type: 'yesno' },
-    { id: 'q2', text: 'Is the patient breathing normally?', type: 'yesno' },
-    { id: 'q3', text: 'Is there any chest pain?', type: 'yesno' },
-    { id: 'q4', text: 'Is there severe bleeding?', type: 'yesno' },
-    { id: 'q5', text: 'What is the patient\'s blood pressure?', type: 'options', opts: ['High / Very High', 'Normal', 'Low / Very Low', 'Unknown'] }
-];
+// Next-Gen Conversational AI Triage
+const AIChatTriage = ({ onBack, onComplete }) => {
+    const [query, setQuery] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState(null);
 
-const TriageFlow = ({ onBack, onComplete }) => {
-    const [step, setStep] = useState(0);
-    const [answers, setAnswers] = useState({});
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!query.trim()) return;
 
-    const handleAnswer = (qid, val) => {
-        const newAns = { ...answers, [qid]: val };
-        setAnswers(newAns);
-
-        if (step < TRIAGE_QUESTIONS.length - 1) {
-            setStep(step + 1);
-        } else {
-            // Process AI Logic
-            let severity = 'Low';
-            let ambType = 'BLS';
-            let reason = 'Patient is stable, requires standard transport.';
-
-            if (newAns.q1 === 'No' || newAns.q2 === 'No') {
-                severity = 'Critical'; ambType = 'ALS';
-                reason = 'Unconscious or breathing issues demand immediate advanced life support.';
-            } else if (newAns.q3 === 'Yes' && newAns.q5 === 'High / Very High') {
-                severity = 'Critical'; ambType = 'ALS';
-                reason = 'Potential cardiac event detected. Dispatching ICU on wheels.';
-            } else if (newAns.q4 === 'Yes') {
-                severity = 'Critical'; ambType = 'ALS';
-                reason = 'Trauma and heavy bleeding require immediate paramedical intervention.';
-            } else if (newAns.q3 === 'Yes' || newAns.q5 === 'Low / Very Low') {
-                severity = 'Moderate'; ambType = 'ALS';
-                reason = 'Moderate risk indicators. Sending ALS as precaution.';
+        setIsLoading(true);
+        setError(null);
+        
+        try {
+            const apiBase = window.EmergiXConfig ? window.EmergiXConfig.API_BASE_URL : '';
+            const res = await fetch(`${apiBase}/api/triage/analyze`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query: query.trim() })
+            });
+            const result = await res.json();
+            
+            if (res.ok && result.status === 'success') {
+                onComplete(result.data);
             } else {
-                severity = 'Low'; ambType = 'BLS';
-                reason = 'Symptoms appear mild. BLS ambulance mapped.';
+                throw new Error(result.error || 'Failed to analyze symptoms.');
             }
-
-            onComplete({ severity, ambType, reason });
+        } catch (err) {
+            console.error(err);
+            setError(err.message || 'Network error analyzing symptoms. Please try again.');
+        } finally {
+            setIsLoading(false);
         }
     };
-
-    const q = TRIAGE_QUESTIONS[step];
-    const progress = Math.round(((step) / TRIAGE_QUESTIONS.length) * 100);
 
     return (
         <div className="ad-modal-wrap">
             <div className="ad-modal-header">
                 <div>
-                    <h2 style={{ margin: 0, fontSize: '1.25rem' }}>AI Triage</h2>
-                    <span style={{ fontSize: '0.85rem', color: '#94A3B8' }}>Fast clinical assessment</span>
+                    <h2 style={{ margin: 0, fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{background: 'linear-gradient(135deg, #10B981, #2B7FFF)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent'}}>AI Triage</span>
+                        <span style={{fontSize: '0.7rem', padding: '2px 6px', background: '#EEF6FF', color: '#2B7FFF', borderRadius: '4px', fontWeight: 'bold'}}>✨ Powered by Gemini</span>
+                    </h2>
+                    <span style={{ fontSize: '0.85rem', color: '#94A3B8' }}>Describe the emergency in your own words.</span>
                 </div>
                 <button className="ad-back-btn" onClick={onBack}>✕ Cancel</button>
             </div>
-            <div className="ad-modal-body">
-                <div className="ad-progress-bar">
-                    <div className="ad-progress-fill" style={{ width: `${progress}%` }}></div>
-                </div>
-
-                <div className="ad-question">{q.text}</div>
-
-                <div className="ad-answer-btns">
-                    {q.type === 'yesno' ? (
-                        <>
-                            <button className="ad-ans-btn" onClick={() => handleAnswer(q.id, 'Yes')}>Yes</button>
-                            <button className="ad-ans-btn" onClick={() => handleAnswer(q.id, 'No')}>No</button>
-                        </>
-                    ) : (
-                        q.opts.map(opt => (
-                            <button key={opt} className="ad-ans-btn" onClick={() => handleAnswer(q.id, opt)}>{opt}</button>
-                        ))
-                    )}
-                </div>
+            <div className="ad-modal-body" style={{ minHeight: '300px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <p style={{ color: '#475569', fontSize: '0.95rem', margin: 0 }}>
+                    Our AI dispatcher will analyze your symptoms to determine the exact type of ambulance needed instantly.
+                </p>
+                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', flexGrow: 1, gap: '1rem' }}>
+                    <textarea 
+                        className="ad-input" 
+                        style={{ flexGrow: 1, minHeight: '120px', resize: 'none', lineHeight: '1.5' }}
+                        placeholder="E.g. My dad is clutching his chest, breathing heavily, and sweating profusely..."
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        disabled={isLoading}
+                    />
+                    {error && <div style={{ color: '#EF4444', fontSize: '0.85rem', padding: '0.5rem', background: '#FEF2F2', borderRadius: '6px' }}>{error}</div>}
+                    <button type="submit" className="ad-btn ad-btn-primary" disabled={isLoading || !query.trim()} style={{ opacity: isLoading || !query.trim() ? 0.7 : 1, transition: 'all 0.2s', background: isLoading ? '#64748B' : '' }}>
+                        {isLoading ? (
+                            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                                <span className="ad-spinner" style={{ width: '16px', height: '16px', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></span>
+                                AI is analyzing...
+                            </span>
+                        ) : '✨ Analyze Symptoms'}
+                    </button>
+                </form>
+                <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
             </div>
         </div>
     );
@@ -467,11 +478,144 @@ const TrackingScreen = ({ bookingData, onHome, onCancel }) => {
     );
 };
 
+const PaymentSelectionScreen = ({ onBack, onConfirm }) => {
+    const [selectedMethod, setSelectedMethod] = useState(null);
+    const [isProcessing, setIsProcessing] = useState(false);
+
+    const methods = [
+        { id: 'razorpay', name: 'Razorpay (Cards, UPI, NetBanking)', icon: '⚡', desc: 'Secure online payment', color: '#3395FF' },
+        { id: 'cod', name: 'Cash on Delivery', icon: '💵', desc: 'Pay directly to the driver', color: '#F59E0B' }
+    ];
+
+    const handleSubmit = async () => {
+        if (!selectedMethod) return;
+        setIsProcessing(true);
+
+        if (selectedMethod === 'razorpay') {
+            try {
+                // 1. Create order on backend
+                const response = await fetch(`${API_Base}/api/razorpay/create-order`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ amount: 999 * 100 }) // 999 INR in paise
+                });
+                const result = await response.json();
+                
+                if (!response.ok) throw new Error(result.error || 'Failed to create order');
+
+                if (result.order.isMock) {
+                    // Fallback if keys are placeholders
+                    console.warn(result.message);
+                    setTimeout(() => onConfirm('razorpay'), 800);
+                    return;
+                }
+
+                // 2. Open Razorpay Widget
+                const options = {
+                    key: result.keyId || 'rzp_test_CHANGE_ME', // Dynamic from backend
+                    amount: result.order.amount,
+                    currency: result.order.currency,
+                    name: 'EmergiX Dispatch',
+                    description: 'Ambulance Booking Fee',
+                    order_id: result.order.id,
+                    handler: function (response) {
+                        // Payment successful
+                        console.log("Payment Success:", response);
+                        onConfirm('razorpay');
+                    },
+                    theme: { color: '#0284C7' }
+                };
+                
+                if (window.Razorpay) {
+                    const rzp = new window.Razorpay(options);
+                    rzp.on('payment.failed', function (response) {
+                        alert('Payment failed. Please try again or use Cash on Delivery.');
+                        setIsProcessing(false);
+                    });
+                    rzp.open();
+                } else {
+                    alert('Razorpay SDK failed to load.');
+                    setIsProcessing(false);
+                }
+            } catch (err) {
+                console.error("Razorpay Error:", err);
+                alert("Could not initialize Razorpay. Please try again.");
+                setIsProcessing(false);
+            }
+        } else {
+            // Cash on delivery flow
+            setTimeout(() => {
+                onConfirm(selectedMethod);
+            }, 800);
+        }
+    };
+
+    return (
+        <div className="ad-modal-wrap" style={{ background: '#fff' }}>
+            <div className="ad-modal-header" style={{ background: '#0F172A', color: 'white' }}>
+                <div>
+                    <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Select Payment Method</h2>
+                    <span style={{ fontSize: '0.85rem', color: '#94A3B8' }}>Secure Checkout</span>
+                </div>
+                <button className="ad-back-btn" onClick={onBack}>✕ Back</button>
+            </div>
+            
+            <div className="ad-modal-body">
+                <div style={{ marginBottom: '1.5rem', background: '#EEF6FF', padding: '1rem', borderRadius: '8px', border: '1px solid #BAE6FD' }}>
+                    <div style={{ color: '#0284C7', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span>💰</span> Estimated Dispatch Fee: <strong>₹999</strong>
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '0.25rem' }}>Final amount may vary based on distance.</div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    {methods.map(m => (
+                        <div 
+                            key={m.id} 
+                            onClick={() => setSelectedMethod(m.id)}
+                            style={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                padding: '1.25rem', 
+                                borderRadius: '12px', 
+                                border: `2px solid ${selectedMethod === m.id ? m.color : '#E2E8F0'}`,
+                                background: selectedMethod === m.id ? `${m.color}11` : '#F8FAFC',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease'
+                            }}
+                        >
+                            <div style={{ fontSize: '1.8rem', marginRight: '1rem' }}>{m.icon}</div>
+                            <div style={{ flex: 1 }}>
+                                <div style={{ fontWeight: '600', color: '#1E293B', fontSize: '1.05rem' }}>{m.name}</div>
+                                <div style={{ fontSize: '0.85rem', color: '#64748B' }}>{m.desc}</div>
+                            </div>
+                            <div style={{ width: '24px', height: '24px', borderRadius: '50%', border: `2px solid ${selectedMethod === m.id ? m.color : '#CBD5E1'}`, background: selectedMethod === m.id ? m.color : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                {selectedMethod === m.id && <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'white' }} />}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                <div style={{ marginTop: '2.5rem' }}>
+                    <button 
+                        className={`ad-btn ${selectedMethod ? 'ad-btn-primary' : ''}`}
+                        style={!selectedMethod ? { background: '#E2E8F0', color: '#94A3B8', cursor: 'not-allowed' } : {}}
+                        disabled={!selectedMethod || isProcessing}
+                        onClick={handleSubmit}
+                    >
+                        {isProcessing ? 'Processing Securely...' : 'Confirm & Dispatch'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 // Main App Component
 const AmbulanceDispatchApp = () => {
-    const [view, setView] = useState('home'); // home, direct, triage, result, tracking, cancel, cancelled
+    const [view, setView] = useState('home'); // home, direct, triage, result, payment, tracking, cancel, cancelled
     const [triageResult, setTriageResult] = useState(null);
+    const [pendingBookingData, setPendingBookingData] = useState(null);
     const [bookingRef, setBookingRef] = useState(null);
     const [cancelReason, setCancelReason] = useState(null);
 
@@ -504,16 +648,17 @@ const AmbulanceDispatchApp = () => {
     };
 
     const handleDirectConfirm = async (data) => {
-        const booking = await createBooking({
+        setPendingBookingData({
             source: 'direct',
             patientName: data.name,
             contact: data.phone,
             location: data.location,
             emergencyType: data.type,
-            ambType: data.ambType
+            ambType: data.ambType,
+            patientWeight: data.weight,
+            isHelperNeeded: data.helper
         });
-        setBookingRef(booking);
-        setView('tracking');
+        setView('payment');
     };
 
     const handleTriageComplete = (result) => {
@@ -522,13 +667,19 @@ const AmbulanceDispatchApp = () => {
     };
 
     const handleProceedFromTriage = async (ambType) => {
-        const booking = await createBooking({
+        setPendingBookingData({
             source: 'triage',
             severity: triageResult?.severity,
             reason: triageResult?.reason,
             ambType
         });
-        setBookingRef({ ...booking, vehicleId: `${ambType}-990` });
+        setView('payment');
+    };
+
+    const handlePaymentConfirm = async (paymentMethod) => {
+        const fullData = { ...pendingBookingData, paymentMethod };
+        const booking = await createBooking(fullData);
+        setBookingRef(booking);
         setView('tracking');
     };
 
@@ -585,6 +736,11 @@ const AmbulanceDispatchApp = () => {
             {view === 'triage' && <TriageFlow onBack={() => setView('home')} onComplete={handleTriageComplete} />}
 
             {view === 'result' && <SeverityResult result={triageResult} onProceed={handleProceedFromTriage} />}
+
+            {view === 'payment' && <PaymentSelectionScreen onBack={() => {
+                if (pendingBookingData?.source === 'triage') setView('result');
+                else setView('direct');
+            }} onConfirm={handlePaymentConfirm} />}
 
             {view === 'tracking' && <TrackingScreen bookingData={bookingRef} onHome={() => setView('home')} onCancel={() => setView('cancel')} />}
 

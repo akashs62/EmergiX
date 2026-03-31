@@ -400,7 +400,7 @@ router.post('/reset-password', async (req, res) => {
 // POST /api/auth/google
 // ─────────────────────────────────────────────────────────────────────────────
 router.post('/google', async (req, res) => {
-    const { email, name, role } = req.body;
+    const { email, name, role, intent } = req.body;
     const cleanEmail = normalizeEmail(email);
     const cleanRole = normalizeRole(role);
     if (!cleanEmail || !cleanRole) return res.status(400).json({ error: 'Email and role are required.' });
@@ -409,25 +409,35 @@ router.post('/google', async (req, res) => {
         if (isDBConnected()) {
             const db = getSupabaseAdmin();
             
-            // Check if user exists
-            let { data: user } = await db
+            // Check if user exists primarily by email (across all roles) to avoid UNIQUE constraint violations
+            let { data: existingUser } = await db
                 .from('users')
-                .select('id, name, email, role')
+                .select('id, name, email, role, username')
                 .eq('email', cleanEmail)
-                .eq('role', cleanRole)
                 .maybeSingle();
 
-            // If user doesn't exist, create a mock one (since it's a social login demo)
-            if (!user) {
+            if (existingUser) {
+                // User already exists. We authenticate them into their existing account
+                // instead of crashing on a duplicate email insert with a different assumed role.
+                user = existingUser;
+            } else {
+                // Determine if we should allow creation
+                if (intent === 'login') {
+                    return res.status(404).json({ error: 'No account found with this email. Please sign up first!' });
+                }
+                
+                // If user doesn't exist at all, create a mock one for social login demo
+                const newUsername = generateUsername(cleanRole);
                 const { data: newUser, error } = await db
                     .from('users')
                     .insert({
                         name: name || email.split('@')[0],
                         email: cleanEmail,
+                        username: newUsername,
                         password_hash: 'google_oauth_bypass',
                         role: cleanRole
                     })
-                    .select('id, name, email, role')
+                    .select('id, name, email, role, username')
                     .single();
                 
                 if (error) throw error;
@@ -438,12 +448,20 @@ router.post('/google', async (req, res) => {
             return res.status(200).json({ status: 'success', token, user });
         } else {
             // In-memory fallback
-            let user = memUsers.find(u => u.email === cleanEmail && u.role === cleanRole);
-            if (!user) {
+            let existingMemUser = memUsers.find(u => u.email === cleanEmail);
+            let user;
+            
+            if (existingMemUser) {
+                user = existingMemUser;
+            } else {
+                if (intent === 'login') {
+                    return res.status(404).json({ error: 'No account found with this email. Please sign up first!' });
+                }
                 user = {
                     id: `google_${Date.now()}`,
                     name: name || email.split('@')[0],
                     email: cleanEmail,
+                    username: generateUsername(cleanRole),
                     role: cleanRole
                 };
                 memUsers.push(user);
@@ -453,7 +471,7 @@ router.post('/google', async (req, res) => {
         }
     } catch (err) {
         console.error('Google auth error:', err);
-        res.status(500).json({ error: 'Server error during social login.' });
+        res.status(500).json({ error: 'Server error during social login. Detail: ' + (err.message || JSON.stringify(err)) });
     }
 });
 

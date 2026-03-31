@@ -11,6 +11,7 @@
         href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Nunito+Sans:wght@400;600;700&display=swap"
         rel="stylesheet" />
     <link rel="stylesheet" href="style.css" />
+    <script src="config.js"></script>
     <style>
         body {
             --active-accent: var(--teal);
@@ -741,13 +742,14 @@
             }
 
             try {
-                let endpoint = 'https://emergi-x.vercel.app/api/auth/signin';
+                const apiBase = window.EmergiXConfig ? window.EmergiXConfig.API_BASE_URL : '';
+                let endpoint = `${apiBase}/api/auth/signin`;
                 let payload = { email, password };
                 if (currentRole === 'doctor') {
-                    endpoint = 'https://emergi-x.vercel.app/api/auth/doctor/signin';
+                    endpoint = `${apiBase}/api/auth/doctor/signin`;
                     payload.licenseNo = license;
                 } else if (currentRole === 'ambulance') {
-                    endpoint = 'https://emergi-x.vercel.app/api/auth/ambulance/signin';
+                    endpoint = `${apiBase}/api/auth/ambulance/signin`;
                     payload.fleetId = fleetId;
                 }
 
@@ -774,7 +776,9 @@
 
                     button.style.background = r.successColor;
                     button.innerText = 'Success!';
-                    setTimeout(() => { window.location.href = r.redirect; }, 800);
+                    const redir = sessionStorage.getItem('redirectAfterLogin') || r.redirect;
+                    sessionStorage.removeItem('redirectAfterLogin');
+                    setTimeout(() => { window.location.href = redir; }, 800);
                 } else {
                     errorMessage.innerText = data.error || 'Failed to sign in. Please try again.';
                     errorMessage.style.display = 'block';
@@ -828,7 +832,8 @@
             btn.innerText = 'Sending...';
 
             try {
-                const res = await fetch('https://emergi-x.vercel.app/api/auth/request-otp', {
+                const apiBase = window.EmergiXConfig ? window.EmergiXConfig.API_BASE_URL : '';
+                const res = await fetch(`${apiBase}/api/auth/request-otp`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, role })
@@ -867,7 +872,8 @@
             btn.innerText = 'Resetting...';
 
             try {
-                const res = await fetch('https://emergi-x.vercel.app/api/auth/reset-password', {
+                const apiBase = window.EmergiXConfig ? window.EmergiXConfig.API_BASE_URL : '';
+                const res = await fetch(`${apiBase}/api/auth/reset-password`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, role, otp, newPassword })
@@ -941,11 +947,11 @@
                             const role = localStorage.getItem('pendingGoogleRole') || 'patient';
                             
                             // 2. Exchange with our Custom Backend to get JWT
-                            const API_URL = window.EmergiXConfig ? window.EmergiXConfig.API_BASE_URL : 'https://emergi-x.vercel.app';
-                            const beRes = await fetch(`${API_URL}/api/auth/google`, {
+                            const apiBase = window.EmergiXConfig ? window.EmergiXConfig.API_BASE_URL : '';
+                            const beRes = await fetch(`${apiBase}/api/auth/google`, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ email, name, role })
+                                body: JSON.stringify({ email, name, role, intent: 'login' })
                             });
                             
                             const data = await beRes.json();
@@ -955,14 +961,18 @@
                                 localStorage.setItem('userId', data.user.id || '');
                                 localStorage.setItem('userEmail', data.user.email);
                                 localStorage.setItem('userRole', data.user.role || 'patient');
+                                localStorage.setItem('username', data.user.username || '');
                                 if (data.user.name) localStorage.setItem('userName', data.user.name);
                                 
                                 // Clear the hash from the URL
                                 history.replaceState(null, null, ' ');
                                 
-                                // Redirect to dashboard
-                                const r = ROLES[role] || ROLES['patient'];
-                                window.location.href = r.redirect;
+                                // Redirect to dashboard or saved path
+                                const actualRole = data.user.role || role;
+                                const r = ROLES[actualRole] || ROLES['patient'];
+                                const redir = sessionStorage.getItem('redirectAfterLogin') || r.redirect;
+                                sessionStorage.removeItem('redirectAfterLogin');
+                                window.location.href = redir;
                             } else {
                                 alert(data.error || 'Failed to authenticate with backend.');
                             }

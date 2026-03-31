@@ -48,7 +48,8 @@ app.use('/api/appointments', require('./routes/appointments'));
 app.use('/api/doctors', require('./routes/doctors'));
 app.use('/api/reviews', require('./routes/reviews'));
 app.use('/api/stats', require('./routes/stats'));
-app.use('/api/payments', require('./routes/payments'));
+app.use('/api/razorpay', require('./routes/razorpay'));
+app.use('/api/triage', require('./routes/triage'));
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Health Check

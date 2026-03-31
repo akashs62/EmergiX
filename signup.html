@@ -10,6 +10,7 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Nunito+Sans:wght@400;600;700&display=swap"
         rel="stylesheet" />
+    <script src="config.js"></script>
     <style>
         *,
         *::before,
@@ -975,8 +976,8 @@
                     payload.fleetId = fleetId;
                 }
 
-                const API_URL = window.EmergiXConfig ? window.EmergiXConfig.API_BASE_URL : 'https://emergi-x.vercel.app';
-                const response = await fetch(`${API_URL}/api/auth/signup`, {
+                const apiBase = window.EmergiXConfig ? window.EmergiXConfig.API_BASE_URL : '';
+                const response = await fetch(`${apiBase}/api/auth/signup`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -994,7 +995,11 @@
                     button.style.background = r.accent;
                     button.innerText = '✓ Account Created!';
 
-                    if (currentRole === 'doctor') {
+                    const redir = sessionStorage.getItem('redirectAfterLogin') || null;
+                    if (redir) {
+                        sessionStorage.removeItem('redirectAfterLogin');
+                        setTimeout(() => window.location.href = redir, 900);
+                    } else if (currentRole === 'doctor') {
                         if (data.user.specialization) localStorage.setItem('doctorSpecialization', data.user.specialization);
                         if (data.user.license_no) localStorage.setItem('doctorLicense', data.user.license_no);
                         setTimeout(() => window.location.href = 'doctor-dashboard.html', 900);
@@ -1065,11 +1070,11 @@
                             const role = localStorage.getItem('pendingGoogleRole') || 'patient';
                             
                             // 2. Exchange with our Custom Backend to get JWT
-                            const API_URL = window.EmergiXConfig ? window.EmergiXConfig.API_BASE_URL : 'https://emergi-x.vercel.app';
-                            const beRes = await fetch(`${API_URL}/api/auth/google`, {
+                            const apiBase = window.EmergiXConfig ? window.EmergiXConfig.API_BASE_URL : '';
+                            const beRes = await fetch(`${apiBase}/api/auth/google`, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ email, name, role })
+                                body: JSON.stringify({ email, name, role, intent: 'register' })
                             });
                             
                             const data = await beRes.json();
@@ -1079,14 +1084,18 @@
                                 localStorage.setItem('userId', data.user.id || '');
                                 localStorage.setItem('userEmail', data.user.email);
                                 localStorage.setItem('userRole', data.user.role || 'patient');
+                                localStorage.setItem('username', data.user.username || '');
                                 if (data.user.name) localStorage.setItem('userName', data.user.name);
                                 
                                 // Clear the hash from the URL
                                 history.replaceState(null, null, ' ');
                                 
-                                // Redirect to dashboard
-                                const r = ROLES[role] || ROLES['patient'];
-                                window.location.href = r.redirect;
+                                // Redirect to dashboard or saved path
+                                const actualRole = data.user.role || role;
+                                const r = ROLES[actualRole] || ROLES['patient'];
+                                const redir = sessionStorage.getItem('redirectAfterLogin') || r.redirect;
+                                sessionStorage.removeItem('redirectAfterLogin');
+                                window.location.href = redir;
                             } else {
                                 alert(data.error || 'Failed to authenticate with backend.');
                             }

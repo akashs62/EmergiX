@@ -39,7 +39,7 @@ router.post('/', async (req, res) => {
         return res.status(503).json({ error: 'Database connection not available.' });
     }
 
-    const { patientName, contact, location, emergencyType, ambType, source, severity, reason } = req.body;
+    const { patientName, contact, location, emergencyType, ambType, source, severity, reason, patientWeight, isHelperNeeded, paymentMethod } = req.body;
     const cleanPatientName = normalizeText(patientName);
     const cleanContact = normalizeText(contact);
     const cleanLocation = normalizeText(location);
@@ -47,6 +47,9 @@ router.post('/', async (req, res) => {
     const cleanSource = normalizeText(source) || 'direct';
     const cleanSeverity = normalizeText(severity) || null;
     const cleanReason = normalizeText(reason) || null;
+    const cleanWeight = normalizeText(patientWeight) || null;
+    const cleanHelper = !!isHelperNeeded;
+    const cleanPaymentMethod = normalizeText(paymentMethod) || 'cod';
 
     if (!cleanPatientName || !cleanContact || !cleanLocation) {
         return res.status(400).json({ error: 'Patient name, contact, and location are required.' });
@@ -72,6 +75,9 @@ router.post('/', async (req, res) => {
                 amb_type: resolvedAmbType,
                 severity: cleanSeverity,
                 reason: cleanReason,
+                patient_weight: cleanWeight,
+                is_helper_needed: cleanHelper,
+                payment_method: cleanPaymentMethod,
                 status: 'dispatched'
             })
             .select('*')

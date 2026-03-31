@@ -488,14 +488,23 @@ async function fetchNearbyHospitals(lat, lng, radiusMeters = 5000) {
             method: 'POST',
             body: 'data=' + encodeURIComponent(query)
         });
+        if (!res.ok) throw new Error('Overpass server error: ' + res.status);
+        
+        const contentType = res.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            throw new Error('Overpass returned non-JSON response');
+        }
+
         const data = await res.json();
+        if (!data || !data.elements) return null;
+
         return data.elements.map(el => ({
             name: el.tags?.name || 'Hospital',
             lat: el.lat || el.center?.lat,
             lng: el.lon || el.center?.lon
         })).filter(h => h.lat && h.lng).slice(0, 10);
     } catch (e) {
-        console.warn('Overpass API failed, using fallback hospitals.', e);
+        console.warn('Overpass API failed, using fallback hospitals.', e.message);
         return null;
     }
 }

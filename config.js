@@ -27,3 +27,30 @@ const EmergiXConfig = (() => {
 
 // Export to window for easy access in scripts
 window.EmergiXConfig = EmergiXConfig;
+
+// Global Authentication Guard
+(function enforceAuthentication() {
+    if (typeof window === 'undefined') return;
+
+    // Define public HTML pages that do not require login
+    const publicPages = [
+        '/', '/index.html', 
+        '/signin.html', '/signin', 
+        '/signup.html', '/signup'
+    ];
+    
+    // Check if the current path is one of the public pages
+    const currentPath = window.location.pathname.toLowerCase();
+    const isPublic = publicPages.some(page => currentPath.endsWith(page));
+
+    // If the page is protected and the user lacks a token...
+    if (!isPublic && !localStorage.getItem('token')) {
+        console.warn('Authentication required. Redirecting to sign in...');
+        
+        // Save the requested URL to redirect the user back after successful login
+        sessionStorage.setItem('redirectAfterLogin', window.location.href);
+        
+        // Redirect to sign in page
+        window.location.replace('/signin.html');
+    }
+})();
