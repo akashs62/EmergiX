@@ -37,7 +37,7 @@ app.use((req, res, next) => {
 });
 
 // Serve static files (HTML, CSS, JS, images)
-app.use(express.static(path.join(__dirname, '.'), { extensions: ['html'] }));
+app.use(express.static(path.join(__dirname, '../frontend'), { extensions: ['html'] }));
 
 // ─────────────────────────────────────────────────────────────────────────────
 // API Routes
@@ -75,7 +75,7 @@ app.use('/api', (req, res) => {
 // Catch-all: serve index.html for any non-API route
 // ─────────────────────────────────────────────────────────────────────────────
 app.get(/^(?!\/api).*$/, (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
+    res.sendFile(path.join(__dirname, '../frontend', 'index.html'));
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
