@@ -32,25 +32,37 @@ window.EmergiXConfig = EmergiXConfig;
 (function enforceAuthentication() {
     if (typeof window === 'undefined') return;
 
-    // Define public HTML pages that do not require login
-    const publicPages = [
-        '/', '/index.html', 
-        '/signin.html', '/signin', 
-        '/signup.html', '/signup'
-    ];
-    
-    // Check if the current path is one of the public pages
+    const publicPages = ['/', '/index.html', '/signin.html', '/signin', '/signup.html', '/signup'];
     const currentPath = window.location.pathname.toLowerCase();
     const isPublic = publicPages.some(page => currentPath.endsWith(page));
 
-    // If the page is protected and the user lacks a token...
-    if (!isPublic && !localStorage.getItem('token')) {
+    const token = localStorage.getItem('token');
+    const role = localStorage.getItem('userRole');
+
+    // Block unauthenticated access to protected routes
+    if (!isPublic && !token) {
         console.warn('Authentication required. Redirecting to sign in...');
-        
-        // Save the requested URL to redirect the user back after successful login
         sessionStorage.setItem('redirectAfterLogin', window.location.href);
-        
-        // Redirect to sign in page
-        window.location.replace('/signin.html');
+        window.location.replace('signin.html');
+        return;
+    }
+
+    // Role-based route definitions for facilities
+    const roleGuards = {
+        '/doctor-dashboard': 'doctor',
+        '/doctor-dashboard.html': 'doctor',
+        '/ambulance-dashboard': 'ambulance',
+        '/ambulance-dashboard.html': 'ambulance'
+    };
+
+    // Check if the current route requires a specific role
+    for (const [route, requiredRole] of Object.entries(roleGuards)) {
+        if (currentPath.endsWith(route)) {
+            if (role !== requiredRole) {
+                console.warn(`Access denied. Route requires ${requiredRole} role.`);
+                window.location.replace('index.html');
+                return;
+            }
+        }
     }
 })();

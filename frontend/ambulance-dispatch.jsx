@@ -733,7 +733,7 @@ const AmbulanceDispatchApp = () => {
 
             {view === 'direct' && <DirectBookingForm onBack={() => setView('home')} onConfirm={handleDirectConfirm} />}
 
-            {view === 'triage' && <TriageFlow onBack={() => setView('home')} onComplete={handleTriageComplete} />}
+            {view === 'triage' && <AIChatTriage onBack={() => setView('home')} onComplete={handleTriageComplete} />}
 
             {view === 'result' && <SeverityResult result={triageResult} onProceed={handleProceedFromTriage} />}
 

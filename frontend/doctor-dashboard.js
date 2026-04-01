@@ -96,8 +96,6 @@ async function fetchLiveAppointments() {
 function populateUserInfo() {
     const email = localStorage.getItem('userEmail') || 'doctor@emergix.com';
     const name = localStorage.getItem('userName') || email.split('@')[0];
-    const role = localStorage.getItem('userRole');
-    if (role && role !== 'doctor') { window.location.href = 'index.html'; return; }
 
     const hour = new Date().getHours();
     let greeting = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
