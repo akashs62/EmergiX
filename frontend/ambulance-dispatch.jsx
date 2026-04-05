@@ -12,9 +12,9 @@ const EMERGENCY_TYPES = [
 
 // --- Sub components ---
 
-const DirectBookingForm = ({ onBack, onConfirm }) => {
+const DirectBookingForm = ({ onBack, onConfirm, hideTypes = false, preSelectedAmbType = 'BLS' }) => {
     const [formData, setFormData] = useState({
-        name: '', phone: '', location: '', type: 'other', ambType: 'BLS', weight: '', helper: false
+        name: '', phone: '', location: '', destination: '', type: 'other', ambType: preSelectedAmbType, weight: '', helper: false
     });
     const [isDetecting, setIsDetecting] = useState(false);
     const [detectError, setDetectError] = useState(null);
@@ -32,10 +32,13 @@ const DirectBookingForm = ({ onBack, onConfirm }) => {
             async (position) => {
                 const { latitude, longitude } = position.coords;
                 try {
-                    const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`);
+                    const response = await fetch(`${API_Base}/api/maps/geocode?lat=${latitude}&lon=${longitude}`);
                     const data = await response.json();
-                    const address = data.display_name || `${latitude}, ${longitude}`;
-                    setFormData(prev => ({ ...prev, location: address }));
+                    if (data.status === 'success' && data.address) {
+                        setFormData(prev => ({ ...prev, location: data.address }));
+                    } else {
+                        throw new Error('Geocoding failed');
+                    }
                 } catch (err) {
                     setFormData(prev => ({ ...prev, location: `${latitude}, ${longitude}` }));
                 } finally {
@@ -63,8 +66,8 @@ const DirectBookingForm = ({ onBack, onConfirm }) => {
         <div className="ad-modal-wrap">
             <div className="ad-modal-header">
                 <div>
-                    <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Direct Dispatch</h2>
-                    <span style={{ fontSize: '0.85rem', color: '#94A3B8' }}>Fastest way to get an ambulance</span>
+                    <h2 style={{ margin: 0, fontSize: '1.25rem' }}>{hideTypes ? 'Finalize Details' : 'Direct Dispatch'}</h2>
+                    <span style={{ fontSize: '0.85rem', color: '#94A3B8' }}>{hideTypes ? `Dispatching ${preSelectedAmbType} Ambulance` : 'Fastest way to get an ambulance'}</span>
                 </div>
                 <button className="ad-back-btn" onClick={onBack}>✕ Cancel</button>
             </div>
@@ -102,22 +105,30 @@ const DirectBookingForm = ({ onBack, onConfirm }) => {
                         {detectError && <div style={{ color: '#DC2626', fontSize: '0.75rem', marginTop: '0.25rem' }}>{detectError}</div>}
                     </div>
 
-                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end' }}>
-                        <div className="ad-form-group" style={{ flex: 1 }}>
-                            <label className="ad-label">Emergency Type</label>
-                            <select className="ad-select" value={formData.type} onChange={e => setFormData({ ...formData, type: e.target.value })}>
-                                {EMERGENCY_TYPES.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
-                            </select>
-                        </div>
-
-                        <div className="ad-form-group" style={{ flex: 1 }}>
-                            <label className="ad-label">Ambulance Type</label>
-                            <select className="ad-select" value={formData.ambType} onChange={e => setFormData({ ...formData, ambType: e.target.value })}>
-                                <option value="BLS">BLS (Basic Support)</option>
-                                <option value="ALS">ALS (Advanced ICU)</option>
-                            </select>
-                        </div>
+                    <div className="ad-form-group">
+                        <label className="ad-label">Destination Hospital</label>
+                        <input className="ad-input" type="text" placeholder="e.g. Apollo Gleneagles Hospital, or 'Nearest Emergency Room'" required
+                            value={formData.destination} onChange={e => setFormData({ ...formData, destination: e.target.value })} />
                     </div>
+
+                    {!hideTypes && (
+                        <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end' }}>
+                            <div className="ad-form-group" style={{ flex: 1 }}>
+                                <label className="ad-label">Emergency Type</label>
+                                <select className="ad-select" value={formData.type} onChange={e => setFormData({ ...formData, type: e.target.value })}>
+                                    {EMERGENCY_TYPES.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+                                </select>
+                            </div>
+
+                            <div className="ad-form-group" style={{ flex: 1 }}>
+                                <label className="ad-label">Ambulance Type</label>
+                                <select className="ad-select" value={formData.ambType} onChange={e => setFormData({ ...formData, ambType: e.target.value })}>
+                                    <option value="BLS">BLS (Basic Support)</option>
+                                    <option value="ALS">ALS (Advanced ICU)</option>
+                                </select>
+                            </div>
+                        </div>
+                    )}
 
                     <div className="ad-form-group" style={{ marginBottom: '1.5rem' }}>
                         <label className="ad-checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', background: '#F8FAFC', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
@@ -325,87 +336,159 @@ const TrackingScreen = ({ bookingData, onHome, onCancel }) => {
         if (!showMap) return;
 
         let map;
-        let ambMarker;
+        let directionsService;
+        let directionsRenderer;
         let animationFrameId;
 
-        const patientLatLng = [22.57286, 88.36401]; // Kolkata center [lat, lng]
-        const initialAmbLatLng = [22.55994, 88.35056];
+        const patientLngLat = { lat: 22.57286, lng: 88.36401 };
+        const initialAmbLngLat = { lat: 22.55994, lng: 88.35056 };
 
-        map = L.map('ambMapCanvas').setView(patientLatLng, 14);
+        const loadGoogleMaps = () => {
+            return new Promise(async (resolve, reject) => {
+                if (window.google && window.google.maps) {
+                    resolve();
+                    return;
+                }
 
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; OSM &copy; CARTO',
-            maxZoom: 19
-        }).addTo(map);
+                let apiKey = window.EmergiXConfig?.GOOGLE_MAPS_API_KEY;
+                if (!apiKey) {
+                    try {
+                        const res = await fetch(`${API_Base}/api/maps/config`);
+                        const data = await res.json();
+                        if (data.apiKey) apiKey = data.apiKey;
+                    } catch (e) {
+                        console.error('Failed to load Maps config', e);
+                    }
+                }
+                apiKey = apiKey || 'YOUR_GOOGLE_MAPS_API_KEY';
 
-        // Patient marker
-        const patientIcon = L.divIcon({
-            className: 'emergi-marker',
-            html: `<div style="background:#FF4D4F; color:#fff; width:24px; height:24px; border-radius:50%; text-align:center; line-height:24px; font-weight:bold; box-shadow:0 0 10px rgba(255,77,79,0.5);">!</div>`,
-            iconSize: [24, 24],
-            iconAnchor: [12, 12]
-        });
-        L.marker(patientLatLng, { icon: patientIcon }).addTo(map).bindPopup('Your Location');
-
-        const ambRoute = [
-            initialAmbLatLng,
-            [22.56582, 88.35172],
-            [22.56857, 88.35729],
-            [22.57534, 88.35961],
-            patientLatLng
-        ];
-
-        L.polyline(ambRoute, {
-            color: '#2EC4B6',
-            weight: 4,
-            dashArray: '10, 10',
-            opacity: 0.7
-        }).addTo(map);
-
-        // Ambulance marker
-        const ambIcon = L.divIcon({
-            className: 'emergi-marker',
-            html: `<div style="background:#2EC4B6; color:#fff; width:36px; height:26px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:16px; box-shadow:0 0 12px rgba(46,196,182,0.6);">🚑</div>`,
-            iconSize: [36, 26],
-            iconAnchor: [18, 13]
-        });
-        ambMarker = L.marker(initialAmbLatLng, { icon: ambIcon, zIndexOffset: 1000 }).addTo(map);
-
-        let progress = 0;
-        const animate = () => {
-            progress += 0.008;
-            const index = Math.floor(progress);
-
-            if (index >= ambRoute.length - 1) {
-                ambMarker.setLatLng(ambRoute[ambRoute.length - 1]);
-                const etaEl = document.getElementById('ad-eta-display');
-                if (etaEl) etaEl.innerText = 'Arrived';
-                return;
-            }
-
-            const currentP = ambRoute[index];
-            const nextP = ambRoute[index + 1];
-            const t = progress - index;
-
-            const lat = currentP[0] + (nextP[0] - currentP[0]) * t;
-            const lng = currentP[1] + (nextP[1] - currentP[1]) * t;
-
-            ambMarker.setLatLng([lat, lng]);
-
-            const remaining = Math.max(1, Math.ceil(4 - (progress / (ambRoute.length - 1)) * 4));
-            const etaEl = document.getElementById('ad-eta-display');
-            if (etaEl && etaEl.innerText !== 'Arrived') {
-                etaEl.innerText = remaining + ' mins';
-            }
-
-            animationFrameId = requestAnimationFrame(animate);
+                const script = document.createElement('script');
+                script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry`;
+                script.async = true;
+                script.defer = true;
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
         };
 
-        animate();
+        const initMap = async () => {
+            try {
+                await loadGoogleMaps();
+                const container = document.getElementById('ambMapCanvas');
+                if (!container) return;
+
+                map = new window.google.maps.Map(container, {
+                    center: patientLngLat,
+                    zoom: 14,
+                    mapTypeId: 'roadmap',
+                    disableDefaultUI: true,
+                    styles: [
+                        { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
+                        { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] },
+                        { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
+                        { featureType: "administrative.locality", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] },
+                        { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] },
+                        { featureType: "road", elementType: "geometry", stylers: [{ color: "#38414e" }] },
+                        { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#212a37" }] },
+                        { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#9ca5b3" }] },
+                        { featureType: "water", elementType: "geometry", stylers: [{ color: "#17263c" }] }
+                    ]
+                });
+
+                directionsService = new window.google.maps.DirectionsService();
+                directionsRenderer = new window.google.maps.DirectionsRenderer({
+                    map: map,
+                    suppressMarkers: true,
+                    polylineOptions: { strokeColor: '#3b82f6', strokeWeight: 5 }
+                });
+
+                // Request Route using Directions API
+                const request = {
+                    origin: initialAmbLngLat,
+                    destination: patientLngLat,
+                    travelMode: 'DRIVING'
+                };
+
+                directionsService.route(request, (result, status) => {
+                    if (status === 'OK') {
+                        directionsRenderer.setDirections(result);
+
+                        // 1. Patient Marker
+                        new window.google.maps.Marker({
+                            position: patientLngLat,
+                            map: map,
+                            label: { text: "!", color: "white", fontWeight: "bold" },
+                            icon: { path: window.google.maps.SymbolPath.CIRCLE, scale: 12, fillColor: "#FF4D4F", fillOpacity: 1, strokeWeight: 0 }
+                        });
+
+                        // 2. Ambulance Marker
+                        const ambMarker = new window.google.maps.Marker({
+                            position: initialAmbLngLat,
+                            map: map,
+                            title: "Ambulance",
+                            label: { text: "🚑", fontSize: "16px" },
+                            icon: { path: window.google.maps.SymbolPath.CIRCLE, scale: 16, fillColor: "#3b82f6", fillOpacity: 1, strokeWeight: 2, strokeColor: "white" }
+                        });
+
+                        // Fetch real ETA from our backend proxy (Distance Matrix)
+                        fetch(`${API_Base}/api/maps/distance?origins=${initialAmbLngLat.lat},${initialAmbLngLat.lng}&destinations=${patientLngLat.lat},${patientLngLat.lng}`)
+                            .then(res => res.json())
+                            .then(data => {
+                                if (data.status === 'success') {
+                                    const etaEl = document.getElementById('ad-eta-display');
+                                    // Make sure it doesn't say "Arrived" yet
+                                    if (etaEl && etaEl.innerText !== 'Arrived') {
+                                        etaEl.innerText = data.duration.text;
+                                    }
+                                }
+                            }).catch(console.error);
+
+                        // 3. Smooth Animation along Route
+                        const routePath = result.routes[0].overview_path;
+                        let progress = 0;
+                        const step = Math.max(0.01, routePath.length / 500); 
+
+                        const animate = () => {
+                            progress += step;
+                            const index = Math.floor(progress);
+
+                            if (index >= routePath.length - 1) {
+                                ambMarker.setPosition(routePath[routePath.length - 1]);
+                                const etaEl = document.getElementById('ad-eta-display');
+                                if (etaEl) etaEl.innerText = 'Arrived';
+                                
+                                map.panTo(patientLngLat);
+                                map.setZoom(16);
+                                return;
+                            }
+
+                            const currentP = routePath[index];
+                            const nextP = routePath[index + 1];
+                            const t = progress - index;
+
+                            const lat = currentP.lat() + (nextP.lat() - currentP.lat()) * t;
+                            const lng = currentP.lng() + (nextP.lng() - currentP.lng()) * t;
+
+                            ambMarker.setPosition({ lat, lng });
+
+                            animationFrameId = requestAnimationFrame(animate);
+                        };
+
+                        setTimeout(() => { animate(); }, 1000);
+                    }
+                });
+
+            } catch (err) {
+                console.error("Google Maps Load Error", err);
+            }
+        };
+
+        initMap();
 
         return () => {
             if (animationFrameId) cancelAnimationFrame(animationFrameId);
-            if (map) map.remove();
+            // Map instance cleans up automatically on DOM node removal mostly
         };
     }, [showMap]);
 
@@ -653,6 +736,7 @@ const AmbulanceDispatchApp = () => {
             patientName: data.name,
             contact: data.phone,
             location: data.location,
+            destination: data.destination,
             emergencyType: data.type,
             ambType: data.ambType,
             patientWeight: data.weight,
@@ -667,11 +751,22 @@ const AmbulanceDispatchApp = () => {
     };
 
     const handleProceedFromTriage = async (ambType) => {
+        setView('triage-form');
+    };
+
+    const handleTriageFormConfirm = async (data) => {
         setPendingBookingData({
             source: 'triage',
             severity: triageResult?.severity,
             reason: triageResult?.reason,
-            ambType
+            patientName: data.name,
+            contact: data.phone,
+            location: data.location,
+            destination: data.destination,
+            emergencyType: data.type,
+            ambType: triageResult?.ambType || data.ambType,
+            patientWeight: data.weight,
+            isHelperNeeded: data.helper
         });
         setView('payment');
     };
@@ -737,8 +832,15 @@ const AmbulanceDispatchApp = () => {
 
             {view === 'result' && <SeverityResult result={triageResult} onProceed={handleProceedFromTriage} />}
 
+            {view === 'triage-form' && <DirectBookingForm 
+                hideTypes={true} 
+                preSelectedAmbType={triageResult?.ambType} 
+                onBack={() => setView('result')} 
+                onConfirm={handleTriageFormConfirm} 
+            />}
+
             {view === 'payment' && <PaymentSelectionScreen onBack={() => {
-                if (pendingBookingData?.source === 'triage') setView('result');
+                if (pendingBookingData?.source === 'triage') setView('triage-form');
                 else setView('direct');
             }} onConfirm={handlePaymentConfirm} />}
 
