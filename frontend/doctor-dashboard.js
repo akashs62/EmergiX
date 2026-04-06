@@ -29,6 +29,153 @@ let consultationActive = false;
 let consultationTimer = null;
 let consultationSeconds = 0;
 
+// ── WebRTC State ──
+let docWebRTC = null;
+let docCallConnected = false;
+let docRoomId = null;
+
+// ─── ICE Config ───────────────────────────────────────────────────────────────
+const ICE_CONFIG = {
+    iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' }
+    ]
+};
+
+// ─── Doctor WebRTC Manager ───────────────────────────────────────────────────
+class DoctorWebRTC {
+    constructor({ roomId, onLocalStream, onRemoteStream, onStatusChange, onChatMessage, onPeerLeft }) {
+        this.roomId = roomId;
+        this.onLocalStream = onLocalStream;
+        this.onRemoteStream = onRemoteStream;
+        this.onStatusChange = onStatusChange;
+        this.onChatMessage = onChatMessage;
+        this.onPeerLeft = onPeerLeft;
+        this.pc = null;
+        this.ws = null;
+        this.localStream = null;
+        this._pendingCandidates = [];
+        this._isMuted = false;
+        this._isVideoOff = false;
+        this._chatMessages = [];
+    }
+
+    async start() {
+        this.onStatusChange('Accessing camera & microphone...');
+        this.localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        this.onLocalStream(this.localStream);
+        this.onStatusChange('Connecting to room...');
+
+        const wsBase = API_Base.replace(/^http/, 'ws');
+        this.ws = new WebSocket(`${wsBase}/ws?roomId=${this.roomId}&role=doctor`);
+        this.ws.onopen = () => {
+            console.log('[Doctor] WS connected');
+            this.onStatusChange('Joined room — waiting for patient...');
+        };
+        this.ws.onmessage = (e) => this._handleSignal(JSON.parse(e.data));
+        this.ws.onerror = (e) => console.error('[Doctor] WS error', e);
+        this.ws.onclose = () => console.log('[Doctor] WS closed');
+    }
+
+    _createPeerConnection() {
+        const pc = new RTCPeerConnection(ICE_CONFIG);
+        this.pc = pc;
+        this.localStream.getTracks().forEach(t => pc.addTrack(t, this.localStream));
+        pc.onicecandidate = ({ candidate }) => {
+            if (candidate && this.ws.readyState === WebSocket.OPEN) {
+                this.ws.send(JSON.stringify({ type: 'ice-candidate', candidate }));
+            }
+        };
+        pc.ontrack = ({ streams }) => {
+            if (streams && streams[0]) this.onRemoteStream(streams[0]);
+        };
+        pc.onconnectionstatechange = () => {
+            const s = pc.connectionState;
+            if (s === 'connected') this.onStatusChange('connected');
+            if (s === 'disconnected' || s === 'failed') {
+                this.onStatusChange('disconnected');
+                this.onPeerLeft();
+            }
+        };
+        return pc;
+    }
+
+    async _handleSignal(msg) {
+        switch (msg.type) {
+            case 'joined':
+                console.log('[Doctor] Joined room:', this.roomId);
+                break;
+            case 'ready':
+                // Both peers in room — doctor sends offer
+                this.onStatusChange('Patient ready — starting call...');
+                if (!this.pc) this._createPeerConnection();
+                const offer = await this.pc.createOffer();
+                await this.pc.setLocalDescription(offer);
+                this.ws.send(JSON.stringify({ type: 'offer', sdp: this.pc.localDescription }));
+                break;
+            case 'answer':
+                if (this.pc) {
+                    await this.pc.setRemoteDescription(new RTCSessionDescription(msg.sdp));
+                    for (const c of this._pendingCandidates) {
+                        await this.pc.addIceCandidate(new RTCIceCandidate(c));
+                    }
+                    this._pendingCandidates = [];
+                    this.onStatusChange('Call connected');
+                }
+                break;
+            case 'ice-candidate':
+                if (this.pc && this.pc.remoteDescription) {
+                    await this.pc.addIceCandidate(new RTCIceCandidate(msg.candidate));
+                } else {
+                    this._pendingCandidates.push(msg.candidate);
+                }
+                break;
+            case 'chat':
+                this._chatMessages.push({ from: 'Patient', text: msg.text });
+                this.onChatMessage({ from: 'Patient', text: msg.text });
+                break;
+            case 'peer-left':
+            case 'end-call':
+                this.onPeerLeft();
+                break;
+            default: break;
+        }
+    }
+
+    sendChat(text) {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.ws.send(JSON.stringify({ type: 'chat', text }));
+        }
+    }
+
+    toggleMute(muted) {
+        this._isMuted = muted;
+        if (this.localStream) this.localStream.getAudioTracks().forEach(t => { t.enabled = !muted; });
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.ws.send(JSON.stringify({ type: 'toggle-audio', muted }));
+        }
+    }
+
+    toggleVideo(videoOff) {
+        this._isVideoOff = videoOff;
+        if (this.localStream) this.localStream.getVideoTracks().forEach(t => { t.enabled = !videoOff; });
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.ws.send(JSON.stringify({ type: 'toggle-video', videoOff }));
+        }
+    }
+
+    endCall() {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify({ type: 'end-call' }));
+        this.destroy();
+    }
+
+    destroy() {
+        if (this.pc) { this.pc.close(); this.pc = null; }
+        if (this.ws) { this.ws.close(); this.ws = null; }
+        if (this.localStream) { this.localStream.getTracks().forEach(t => t.stop()); this.localStream = null; }
+    }
+}
+
 // ── Init ──
 async function initDashboard() {
     populateUserInfo();
@@ -359,102 +506,246 @@ function renderConsultations() {
     const panel = document.getElementById('view-consultations');
     const pending = DB.appointments.filter(a => a.status === 'pending' || a.status === 'urgent');
 
+    if (consultationActive) {
+        // Show full-screen call UI
+        renderActiveConsultation();
+        return;
+    }
+
     panel.innerHTML = `
         <h2 style="font-family:'Poppins',sans-serif;font-size:22px;font-weight:700;margin-bottom:20px;">Virtual Consultations</h2>
-        <div id="consultation-area">
-            ${consultationActive ? '' : `
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px;">
-                <div style="background:#fff;border-radius:16px;border:1px solid #e2e8f0;padding:28px;">
-                    <h3 style="font-size:16px;font-weight:600;margin-bottom:16px;">Queued Consultations</h3>
-                    ${pending.length === 0 ? '<p style="color:#94a3b8;font-size:14px;">No active queue.</p>' : pending.map(a => `
-                        <div style="display:flex;align-items:center;gap:12px;padding:14px;background:#faf9ff;border-radius:10px;margin-bottom:10px;border:1px solid #ede9fe;">
-                            <div style="flex:1;"><div style="font-weight:600;font-size:14px;">${a.patient}</div><div style="font-size:12px;color:#64748b;">${a.type}</div></div>
-                            <button onclick="startConsultation('${a.id}')" style="padding:8px 16px;border:none;border-radius:8px;background:#4f46e5;color:#fff;font-size:12px;font-weight:600;cursor:pointer;">Enter Room</button>
-                        </div>`).join('')}
-                </div>
-                <div style="background:#fff;border-radius:16px;border:1px solid #e2e8f0;padding:28px;">
-                    <h3 style="font-size:16px;font-weight:600;margin-bottom:16px;">Quick Start</h3>
-                    <p style="color:#64748b;font-size:14px;margin-bottom:16px;">Start session with patient</p>
-                    <select id="consult-patient-select" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;margin-bottom:12px;font-family:'Inter',sans-serif;">
-                        ${DB.patients.length === 0 ? '<option>No patients available</option>' : DB.patients.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}
-                    </select>
-                    <button onclick="startQuickConsult()" style="width:100%;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;font-weight:600;cursor:pointer;font-size:14px;">▶ Start HD Video Call</button>
-                </div>
-            </div>`}
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px;">
+            <div style="background:#fff;border-radius:16px;border:1px solid #e2e8f0;padding:28px;">
+                <h3 style="font-size:16px;font-weight:600;margin-bottom:16px;">📋 Queued Consultations</h3>
+                ${pending.length === 0 ? '<p style="color:#94a3b8;font-size:14px;">No active queue.</p>' : pending.map(a => `
+                    <div style="display:flex;align-items:center;gap:12px;padding:14px;background:#faf9ff;border-radius:10px;margin-bottom:10px;border:1px solid #ede9fe;">
+                        <div style="flex:1;"><div style="font-weight:600;font-size:14px;">${a.patient}</div><div style="font-size:12px;color:#64748b;">${a.type}</div></div>
+                        <button onclick="startConsultation('${a.id}')" style="padding:8px 16px;border:none;border-radius:8px;background:#4f46e5;color:#fff;font-size:12px;font-weight:600;cursor:pointer;">🎥 Enter Room</button>
+                    </div>`).join('')}
+            </div>
+            <div style="background:#fff;border-radius:16px;border:1px solid #e2e8f0;padding:28px;">
+                <h3 style="font-size:16px;font-weight:600;margin-bottom:8px;">🔗 Join by Room ID</h3>
+                <p style="color:#64748b;font-size:13px;margin-bottom:14px;">Enter the Room ID the patient received after payment</p>
+                <input id="doc-room-id-input" placeholder="room-123-abc..." style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;margin-bottom:12px;font-family:'Inter',sans-serif;box-sizing:border-box;transition:border-color 0.2s;" onfocus="this.style.borderColor='#4f46e5'" onblur="this.style.borderColor='#e2e8f0'">
+                <input id="doc-patient-name" placeholder="Patient name (for display)" style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;margin-bottom:12px;font-family:'Inter',sans-serif;box-sizing:border-box;">
+                <button onclick="joinRoomById()" style="width:100%;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;font-weight:700;cursor:pointer;font-size:14px;letter-spacing:0.3px;">🎥 Join Video Call</button>
+            </div>
         </div>
-        <div id="active-consultation" style="display:${consultationActive ? 'block' : 'none'};"></div>`;
-
-    if (consultationActive) renderActiveConsultation();
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:14px;padding:18px 22px;color:#166534;font-size:13px;">
+            💡 <strong>How it works:</strong> Patient books & pays → receives a Room ID → share it with you → you join using the form above → live WebRTC call begins.
+        </div>`;
 }
 
 function startConsultation(apptId) {
     const a = DB.appointments.find(x => x.id === apptId);
     if (!a) return;
     a.status = 'in-progress';
-    consultationActive = true;
-    consultationSeconds = 0;
-    consultationTimer = setInterval(() => {
-        consultationSeconds++;
-        const el = document.getElementById('consult-timer');
-        if (el) el.textContent = formatTime(consultationSeconds);
-    }, 1000);
+    // For appointment-based calls, patient would have created the room — prompt doctor for room ID
+    const rid = prompt(`Enter the Room ID provided by patient ${a.patient}:`);
+    if (!rid || !rid.trim()) return;
     window._currentConsultPatient = a.patient;
     window._currentConsultApptId = a.id;
-    renderConsultations();
+    launchDoctorCall(rid.trim(), a.patient);
 }
 
-function startQuickConsult() {
-    const select = document.getElementById('consult-patient-select');
-    const pid = select.value;
-    const p = DB.patients.find(x => x.id === pid);
-    if (!p) return;
+function joinRoomById() {
+    const rid = document.getElementById('doc-room-id-input').value.trim();
+    const patientName = document.getElementById('doc-patient-name').value.trim() || 'Patient';
+    if (!rid) { showToast('Please enter a Room ID', 'warning'); return; }
+    window._currentConsultPatient = patientName;
+    window._currentConsultApptId = null;
+    launchDoctorCall(rid, patientName);
+}
+
+async function launchDoctorCall(roomId, patientName) {
+    docRoomId = roomId;
     consultationActive = true;
     consultationSeconds = 0;
+    docCallConnected = false;
+    renderConsultations();
+
+    // Start WebRTC
+    try {
+        docWebRTC = new DoctorWebRTC({
+            roomId,
+            onLocalStream: (stream) => {
+                const vid = document.getElementById('doc-local-video');
+                if (vid) { vid.srcObject = stream; vid.play().catch(()=>{}); }
+            },
+            onRemoteStream: (stream) => {
+                const vid = document.getElementById('doc-remote-video');
+                if (vid) { vid.srcObject = stream; vid.play().catch(()=>{}); }
+                docCallConnected = true;
+                updateDocCallStatus('Call connected — Live');
+                startDocTimer();
+            },
+            onStatusChange: (s) => updateDocCallStatus(s),
+            onChatMessage: (msg) => appendDocChat(msg),
+            onPeerLeft: () => {
+                updateDocCallStatus('Patient left the call');
+                setTimeout(() => endConsultation(), 2000);
+            }
+        });
+        await docWebRTC.start();
+    } catch(err) {
+        console.error('Doctor WebRTC failed:', err);
+        showToast('Camera/mic access denied. Check permissions.', 'danger');
+        consultationActive = false;
+        renderConsultations();
+    }
+}
+
+function startDocTimer() {
+    clearInterval(consultationTimer);
     consultationTimer = setInterval(() => {
         consultationSeconds++;
-        const el = document.getElementById('consult-timer');
+        const el = document.getElementById('doc-call-timer');
         if (el) el.textContent = formatTime(consultationSeconds);
     }, 1000);
-    window._currentConsultPatient = p.name;
-    window._currentConsultApptId = null;
-    renderConsultations();
+}
+
+function updateDocCallStatus(status) {
+    const el = document.getElementById('doc-call-status');
+    if (el) el.textContent = status;
+}
+
+function appendDocChat(msg) {
+    const body = document.getElementById('doc-chat-body');
+    if (!body) return;
+    const div = document.createElement('div');
+    div.style.cssText = `display:flex;flex-direction:column;gap:2px;margin-bottom:8px;align-items:${msg.from === 'You' ? 'flex-end':'flex-start'};`;
+    div.innerHTML = `<span style="font-size:0.7rem;color:#64748b;">${msg.from}</span><span style="padding:8px 12px;border-radius:12px;font-size:0.85rem;background:${msg.from==='You'?'#4f46e5':'#1e293b'};color:${msg.from==='You'?'white':'#cbd5e1'};">${msg.text}</span>`;
+    body.appendChild(div);
+    body.scrollTop = body.scrollHeight;
 }
 
 function renderActiveConsultation() {
-    const area = document.getElementById('active-consultation');
-    area.style.display = 'block';
-    area.innerHTML = `
-        <div style="background:#1e1b4b;border-radius:16px;padding:32px;color:#fff;margin-bottom:20px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
-                <div><div style="font-size:13px;color:#a78bfa;font-weight:600;margin-bottom:4px;">LIVE SESSION</div>
-                    <div style="font-size:22px;font-weight:700;">${window._currentConsultPatient || 'Patient'}</div></div>
-                <div style="text-align:center;"><div style="font-size:12px;color:#a78bfa;margin-bottom:4px;">Time</div>
-                    <div id="consult-timer" style="font-size:28px;font-weight:700;font-family:'Poppins',sans-serif;">${formatTime(consultationSeconds)}</div></div>
+    const panel = document.getElementById('view-consultations');
+    const patientName = window._currentConsultPatient || 'Patient';
+
+    panel.innerHTML = `
+    <div style="position:fixed;top:0;left:0;right:0;bottom:0;background:#0a0f1e;z-index:9999;display:flex;flex-direction:column;font-family:'Inter',sans-serif;">
+        <!-- Header -->
+        <div style="background:rgba(10,15,30,0.95);padding:14px 24px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,0.08);">
+            <div style="display:flex;align-items:center;gap:14px;">
+                <div style="width:10px;height:10px;border-radius:50%;background:#f59e0b;animation:pulse-d 1.5s infinite;flex-shrink:0;"></div>
+                <div>
+                    <div style="font-weight:600;font-size:1.05rem;color:white;">${patientName}</div>
+                    <div style="font-size:0.8rem;color:#64748b;">Patient — Video Consultation</div>
+                </div>
             </div>
-            <div style="background:rgba(255,255,255,0.08);border-radius:12px;height:280px;display:flex;align-items:center;justify-content:center;margin-bottom:20px;">
-                <div style="text-align:center;"><div style="font-size:48px;margin-bottom:8px;">📹</div><div style="color:#a78bfa;font-size:14px;">Patient stream connected</div></div>
+            <div style="display:flex;align-items:center;gap:12px;">
+                <div id="doc-call-status" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);padding:4px 12px;border-radius:20px;font-size:0.78rem;color:#94a3b8;">Connecting...</div>
+                <div style="background:rgba(255,255,255,0.08);padding:6px 14px;border-radius:6px;font-family:monospace;font-size:1rem;color:white;">
+                    ● <span id="doc-call-timer">00:00</span>
+                </div>
             </div>
-            <div style="display:flex;gap:12px;justify-content:center;">
-                <button onclick="toggleMute(this)" style="padding:12px 24px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-weight:600;font-size:14px;">🎤 Mute</button>
-                <button onclick="toggleVideo(this)" style="padding:12px 24px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-weight:600;font-size:14px;">📷 Video</button>
-                <button onclick="endConsultation()" style="padding:12px 24px;border:none;border-radius:10px;background:#ef4444;color:#fff;cursor:pointer;font-weight:700;font-size:14px;">✕ End Session</button>
+        </div>
+        <!-- Room ID bar -->
+        <div style="background:rgba(79,70,229,0.12);border-bottom:1px solid rgba(79,70,229,0.2);padding:8px 24px;display:flex;align-items:center;gap:10px;color:#a78bfa;font-size:0.82rem;">
+            <span>Room:</span>
+            <code style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);padding:2px 10px;border-radius:5px;font-family:monospace;color:#c4b5fd;">${docRoomId}</code>
+        </div>
+        <!-- Call Body -->
+        <div style="flex:1;display:flex;padding:14px;gap:14px;overflow:hidden;min-height:0;">
+            <!-- Main Video -->
+            <div style="flex:3;background:#111827;border-radius:20px;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;box-shadow:0 20px 60px rgba(0,0,0,0.6);">
+                <!-- Remote (Patient) video -->
+                <video id="doc-remote-video" autoplay playsinline style="width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;border-radius:20px;display:block;"></video>
+                <!-- Waiting overlay -->
+                <div id="doc-waiting-overlay" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:2;">
+                    <div style="position:absolute;width:110px;height:110px;border-radius:50%;border:2px solid rgba(79,70,229,0.4);animation:pulse-d 2s ease infinite;"></div>
+                    <div style="width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,#1e3a5f,#1d4ed8);display:flex;align-items:center;justify-content:center;font-size:2.5rem;font-weight:700;color:white;z-index:2;">${patientName.charAt(0).toUpperCase()}</div>
+                    <p style="color:#94a3b8;font-size:1rem;z-index:2;">Waiting for patient to connect...</p>
+                </div>
+                <!-- Patient name label -->
+                <div style="position:absolute;bottom:16px;left:16px;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);color:white;font-size:0.75rem;padding:3px 10px;border-radius:6px;z-index:3;">${patientName} (Patient)</div>
+                <!-- Local PiP -->
+                <div style="position:absolute;bottom:20px;right:20px;width:200px;height:136px;background:#1e293b;border-radius:14px;border:2px solid rgba(255,255,255,0.25);overflow:hidden;z-index:4;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(0,0,0,0.5);">
+                    <video id="doc-local-video" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover;"></video>
+                    <div style="position:absolute;bottom:6px;left:8px;background:rgba(0,0,0,0.6);color:white;font-size:0.7rem;padding:2px 8px;border-radius:5px;">You (Dr.)</div>
+                </div>
             </div>
-        </div>`;
+            <!-- Chat Sidebar -->
+            <div style="flex:1;background:#111827;border-radius:20px;display:flex;flex-direction:column;overflow:hidden;max-width:320px;min-width:220px;box-shadow:0 20px 60px rgba(0,0,0,0.4);">
+                <div style="padding:14px;background:rgba(255,255,255,0.05);color:white;font-weight:600;font-size:0.9rem;border-bottom:1px solid rgba(255,255,255,0.07);">💬 Consultation Chat</div>
+                <div id="doc-chat-body" style="flex:1;padding:14px;overflow-y:auto;display:flex;flex-direction:column;gap:2px;scrollbar-width:thin;scrollbar-color:#334155 transparent;">
+                    <div style="text-align:center;color:#475569;font-size:0.82rem;padding:10px;">Chat will activate when patient joins.</div>
+                </div>
+                <div style="padding:12px;background:rgba(0,0,0,0.3);display:flex;gap:8px;border-top:1px solid rgba(255,255,255,0.05);">
+                    <input id="doc-chat-input" type="text" placeholder="Type a message..." style="flex:1;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);padding:9px 12px;border-radius:10px;color:white;outline:none;font-size:0.83rem;font-family:'Inter',sans-serif;" onkeydown="if(event.key==='Enter')sendDocChat()">
+                    <button onclick="sendDocChat()" style="width:42px;height:42px;border-radius:50%;border:none;background:#4f46e5;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" stroke="white" stroke-width="2" stroke-linejoin="round"/></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- Controls -->
+        <div style="padding:16px;background:rgba(10,15,30,0.95);display:flex;justify-content:center;gap:16px;align-items:center;border-top:1px solid rgba(255,255,255,0.06);">
+            <button id="doc-mute-btn" onclick="docToggleMute()" style="width:56px;height:56px;border-radius:50%;border:none;background:#1e293b;border:1px solid rgba(255,255,255,0.1);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s;" title="Mute">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 1a4 4 0 014 4v5a4 4 0 01-8 0V5a4 4 0 014-4z" fill="white"/><path d="M19 10a7 7 0 01-14 0" stroke="white" stroke-width="2"/><line x1="12" y1="17" x2="12" y2="21" stroke="white" stroke-width="2"/></svg>
+            </button>
+            <button id="doc-video-btn" onclick="docToggleVideo()" style="width:56px;height:56px;border-radius:50%;border:none;background:#1e293b;border:1px solid rgba(255,255,255,0.1);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s;" title="Video">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M16 3H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2z" fill="white"/><path d="M22 8.5l-4 3 4 3V8.5z" fill="white"/></svg>
+            </button>
+            <button onclick="endConsultation()" style="width:68px;height:68px;border-radius:50%;border:none;background:#ef4444;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(239,68,68,0.4);transition:all 0.2s;" title="End Call">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C9.6 21 3 14.4 3 6c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z" fill="white"/></svg>
+            </button>
+            <button onclick="docShareScreen()" style="width:56px;height:56px;border-radius:50%;border:none;background:#1e293b;border:1px solid rgba(255,255,255,0.1);cursor:pointer;display:flex;align-items:center;justify-content:center;" title="Share Screen">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="2" y="3" width="20" height="14" rx="2" stroke="white" stroke-width="2"/><path d="M8 21h8M12 17v4" stroke="white" stroke-width="2"/></svg>
+            </button>
+        </div>
+        <style>@keyframes pulse-d { 0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.4;transform:scale(1.4)} }</style>
+    </div>`;
 }
 
-function toggleMute(btn) { btn.textContent = btn.textContent.includes('Mute') ? '🔇 Unmute' : '🎤 Mute'; }
-function toggleVideo(btn) { btn.textContent = btn.textContent.includes('Video') ? '📷 Cam Off' : '📷 Video'; }
+function sendDocChat() {
+    const input = document.getElementById('doc-chat-input');
+    if (!input || !input.value.trim()) return;
+    const text = input.value.trim();
+    appendDocChat({ from: 'You', text });
+    if (docWebRTC) docWebRTC.sendChat(text);
+    input.value = '';
+}
+
+let _docMuted = false;
+function docToggleMute() {
+    _docMuted = !_docMuted;
+    if (docWebRTC) docWebRTC.toggleMute(_docMuted);
+    const btn = document.getElementById('doc-mute-btn');
+    if (btn) btn.style.background = _docMuted ? '#1d4ed8' : '#1e293b';
+    showToast(_docMuted ? 'Microphone muted' : 'Microphone on', 'info');
+}
+
+let _docVideoOff = false;
+function docToggleVideo() {
+    _docVideoOff = !_docVideoOff;
+    if (docWebRTC) docWebRTC.toggleVideo(_docVideoOff);
+    const btn = document.getElementById('doc-video-btn');
+    if (btn) btn.style.background = _docVideoOff ? '#1d4ed8' : '#1e293b';
+    showToast(_docVideoOff ? 'Camera off' : 'Camera on', 'info');
+}
+
+function docShareScreen() {
+    showToast('Screen sharing requires HTTPS — available in production.', 'warning');
+}
 
 function endConsultation() {
     clearInterval(consultationTimer);
     consultationActive = false;
+    docCallConnected = false;
+    _docMuted = false;
+    _docVideoOff = false;
+    if (docWebRTC) { docWebRTC.endCall(); docWebRTC = null; }
     if (window._currentConsultApptId) {
         const a = DB.appointments.find(x => x.id === window._currentConsultApptId);
         if (a) a.status = 'completed';
     }
-    showToast(`Session completed.`, 'success');
+    const duration = formatTime(consultationSeconds);
     consultationSeconds = 0;
-    renderConsultations();
+    docRoomId = null;
+    showToast(`Session completed. Duration: ${duration}`, 'success');
+    showView('consultations');
 }
 
 function formatTime(s) {

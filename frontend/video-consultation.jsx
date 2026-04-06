@@ -1,51 +1,231 @@
-const { useState, useEffect, useMemo } = React;
-const API_Base = window.EmergiXConfig ? window.EmergiXConfig.API_BASE_URL : 'http://127.0.0.1:3000'; // Global config for API base, defaulting to hitting the backend explicitly if config is missing
+/**
+ * EmergiX — Video Consultation (Patient Side)
+ * Real WebRTC peer-to-peer video call via WebSocket signaling.
+ */
+const { useState, useEffect, useRef, useMemo, useCallback } = React;
+const API_Base = window.EmergiXConfig ? window.EmergiXConfig.API_BASE_URL : 'http://127.0.0.1:3000';
 
+// ─── ICE Config ───────────────────────────────────────────────────────────────
+const ICE_CONFIG = {
+    iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' }
+    ]
+};
+
+// ─── WebRTC Manager (Patient) ─────────────────────────────────────────────────
+class PatientWebRTC {
+    constructor({ roomId, onRemoteStream, onStatusChange, onChatMessage, onPeerLeft }) {
+        this.roomId = roomId;
+        this.onRemoteStream = onRemoteStream;
+        this.onStatusChange = onStatusChange;
+        this.onChatMessage = onChatMessage;
+        this.onPeerLeft = onPeerLeft;
+        this.pc = null;
+        this.ws = null;
+        this.localStream = null;
+        this._pendingCandidates = [];
+    }
+
+    async start() {
+        this.onStatusChange('Accessing camera & microphone...');
+        // Get local media
+        this.localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        this.onStatusChange('Waiting for doctor to join...');
+
+        // Set up WebSocket
+        const wsBase = API_Base.replace(/^http/, 'ws');
+        this.ws = new WebSocket(`${wsBase}/ws?roomId=${this.roomId}&role=patient`);
+
+        this.ws.onopen = () => console.log('[Patient] WS connected');
+        this.ws.onmessage = (e) => this._handleSignal(JSON.parse(e.data));
+        this.ws.onerror = (e) => console.error('[Patient] WS error', e);
+        this.ws.onclose = () => console.log('[Patient] WS closed');
+
+        return this.localStream;
+    }
+
+    _createPeerConnection() {
+        const pc = new RTCPeerConnection(ICE_CONFIG);
+        this.pc = pc;
+
+        // Add local tracks
+        this.localStream.getTracks().forEach(track => pc.addTrack(track, this.localStream));
+
+        // ICE candidates
+        pc.onicecandidate = ({ candidate }) => {
+            if (candidate && this.ws.readyState === WebSocket.OPEN) {
+                this.ws.send(JSON.stringify({ type: 'ice-candidate', candidate }));
+            }
+        };
+
+        // Remote stream
+        pc.ontrack = ({ streams }) => {
+            if (streams && streams[0]) this.onRemoteStream(streams[0]);
+        };
+
+        pc.onconnectionstatechange = () => {
+            const state = pc.connectionState;
+            if (state === 'connected') this.onStatusChange('connected');
+            if (state === 'disconnected' || state === 'failed') this.onStatusChange('disconnected');
+        };
+
+        return pc;
+    }
+
+    async _handleSignal(msg) {
+        switch (msg.type) {
+            case 'joined':
+                console.log('[Patient] Joined room');
+                break;
+            case 'peer-joined':
+                this.onStatusChange('Doctor joined — connecting...');
+                if (!this.pc) this._createPeerConnection();
+                // Drain any buffered ICE candidates
+                break;
+            case 'offer':
+                // Doctor sent offer — patient answers
+                if (!this.pc) this._createPeerConnection();
+                await this.pc.setRemoteDescription(new RTCSessionDescription(msg.sdp));
+                // Drain pending candidates
+                for (const c of this._pendingCandidates) {
+                    await this.pc.addIceCandidate(new RTCIceCandidate(c));
+                }
+                this._pendingCandidates = [];
+                const answer = await this.pc.createAnswer();
+                await this.pc.setLocalDescription(answer);
+                this.ws.send(JSON.stringify({ type: 'answer', sdp: this.pc.localDescription }));
+                this.onStatusChange('Call connected');
+                break;
+            case 'ice-candidate':
+                if (this.pc && this.pc.remoteDescription) {
+                    await this.pc.addIceCandidate(new RTCIceCandidate(msg.candidate));
+                } else {
+                    this._pendingCandidates.push(msg.candidate);
+                }
+                break;
+            case 'chat':
+                this.onChatMessage({ from: 'Doctor', text: msg.text });
+                break;
+            case 'peer-left':
+                this.onPeerLeft();
+                break;
+            case 'end-call':
+                this.onPeerLeft();
+                break;
+            default:
+                break;
+        }
+    }
+
+    sendChat(text) {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.ws.send(JSON.stringify({ type: 'chat', text }));
+        }
+    }
+
+    toggleMute(muted) {
+        if (this.localStream) {
+            this.localStream.getAudioTracks().forEach(t => { t.enabled = !muted; });
+        }
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.ws.send(JSON.stringify({ type: 'toggle-audio', muted }));
+        }
+    }
+
+    toggleVideo(videoOff) {
+        if (this.localStream) {
+            this.localStream.getVideoTracks().forEach(t => { t.enabled = !videoOff; });
+        }
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.ws.send(JSON.stringify({ type: 'toggle-video', videoOff }));
+        }
+    }
+
+    endCall() {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.ws.send(JSON.stringify({ type: 'end-call' }));
+        }
+        this.destroy();
+    }
+
+    destroy() {
+        if (this.pc) { this.pc.close(); this.pc = null; }
+        if (this.ws) { this.ws.close(); this.ws = null; }
+        if (this.localStream) {
+            this.localStream.getTracks().forEach(t => t.stop());
+            this.localStream = null;
+        }
+    }
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 const VideoConsultationPage = () => {
     const [doctors, setDoctors] = useState([]);
     const [search, setSearch] = useState('');
     const [specFilter, setSpecFilter] = useState('');
     const [sortBy, setSortBy] = useState('');
     const [selectedDoc, setSelectedDoc] = useState(null);
-    const [modalUI, setModalUI] = useState(null); // 'booking', 'payment', 'call'
+    const [modalUI, setModalUI] = useState(null); // 'booking' | 'payment' | 'call' | 'ended'
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-
-    // Form
     const [consultType, setConsultType] = useState('instant');
     const [dateTime, setDateTime] = useState('');
     const [patientInfo, setPatientInfo] = useState({ name: '', phone: '', symptoms: '' });
-
-    // Call UI State
-    const [callTime, setCallTime] = useState(0);
     const [isPaying, setIsPaying] = useState(false);
+    const [callTime, setCallTime] = useState(0);
 
-    useEffect(() => {
-        // Stripe has been removed, Razorpay handles payments via overlay so no redirect checks are needed
-    }, []);
+    // WebRTC state
+    const [roomId, setRoomId] = useState(null);
+    const [callStatus, setCallStatus] = useState('');
+    const [isMuted, setIsMuted] = useState(false);
+    const [isVideoOff, setIsVideoOff] = useState(false);
+    const [remoteVideoOff, setRemoteVideoOff] = useState(false);
+    const [chatMessages, setChatMessages] = useState([]);
+    const [chatInput, setChatInput] = useState('');
+    const [callConnected, setCallConnected] = useState(false);
+
+    const localVideoRef = useRef(null);
+    const remoteVideoRef = useRef(null);
+    const webrtcRef = useRef(null);
+    const chatEndRef = useRef(null);
+
+    // Fetch doctors
     useEffect(() => {
         setLoading(true);
-        setError(null);
         fetch(`${API_Base}/api/doctors`)
             .then(res => {
                 if (!res.ok) throw new Error(`Server responded with ${res.status}`);
                 return res.json();
             })
             .then(data => {
-                if (data.status === 'success') {
-                    setDoctors(data.data);
-                } else {
-                    throw new Error(data.error || 'Failed to load doctors');
-                }
+                if (data.status === 'success') setDoctors(data.data);
+                else throw new Error(data.error || 'Failed to load doctors');
             })
-            .catch(err => {
-                console.error('Failed to load doctors:', err);
-                setError(err.message);
-            })
+            .catch(err => setError(err.message))
             .finally(() => setLoading(false));
     }, []);
 
-    const availableCount = doctors.filter(doc => doc.status === 'Available').length;
+    // Call timer
+    useEffect(() => {
+        let interval = null;
+        if (modalUI === 'call' && callConnected) {
+            interval = setInterval(() => setCallTime(prev => prev + 1), 1000);
+        }
+        return () => clearInterval(interval);
+    }, [modalUI, callConnected]);
+
+    // Scroll chat to bottom
+    useEffect(() => {
+        if (chatEndRef.current) chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }, [chatMessages]);
+
+    // Cleanup WebRTC on unmount
+    useEffect(() => {
+        return () => { if (webrtcRef.current) webrtcRef.current.destroy(); };
+    }, []);
+
+    const availableCount = doctors.filter(d => d.status === 'Available').length;
 
     const filteredDocs = useMemo(() => {
         let res = [...doctors];
@@ -54,24 +234,11 @@ const VideoConsultationPage = () => {
             res = res.filter(d => d.name.toLowerCase().includes(q) || d.specialization.toLowerCase().includes(q));
         }
         if (specFilter) res = res.filter(d => d.specialization === specFilter);
-
         if (sortBy === 'price') res.sort((a, b) => a.fee - b.fee);
         if (sortBy === 'experience') res.sort((a, b) => b.experience - a.experience);
         if (sortBy === 'availability') res.sort((a, b) => (a.status === 'Available' ? -1 : 1));
-
         return res;
     }, [search, specFilter, sortBy, doctors]);
-
-    useEffect(() => {
-        let interval = null;
-        if (modalUI === 'call') {
-            interval = setInterval(() => setCallTime(prev => prev + 1), 1000);
-        } else {
-            setCallTime(0);
-            if (interval) clearInterval(interval);
-        }
-        return () => clearInterval(interval);
-    }, [modalUI]);
 
     const formatTime = (secs) => {
         const m = Math.floor(secs / 60).toString().padStart(2, '0');
@@ -92,49 +259,52 @@ const VideoConsultationPage = () => {
         const effectiveFee = (selectedDoc.fee && selectedDoc.fee > 0) ? selectedDoc.fee : 500;
         setIsPaying(true);
         try {
-            // 1. Create order on backend — use effectiveFee to guard against null/zero fee in DB
             const response = await fetch(`${API_Base}/api/razorpay/create-order`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ amount: effectiveFee * 100, receipt: `doc_${selectedDoc.id}` }) 
+                body: JSON.stringify({ amount: effectiveFee * 100, receipt: `doc_${selectedDoc.id}` })
             });
             const result = await response.json();
-            
             if (!response.ok) throw new Error(result.error || 'Failed to create Razorpay order');
 
-            if (result.order.isMock) {
+            const onPaymentSuccess = async () => {
+                // Create a video room
+                const roomRes = await fetch(`${API_Base}/api/rooms/create`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ doctorId: selectedDoc.id, patientName: patientInfo.name })
+                });
+                const roomData = await roomRes.json();
+                if (!roomRes.ok) throw new Error('Failed to create call room');
+                setRoomId(roomData.roomId);
+                setModalUI('call');
+                startWebRTC(roomData.roomId);
+            };
+
+            if (result.order && result.order.isMock) {
                 console.warn(result.message);
-                setTimeout(() => setModalUI('call'), 800);
+                setTimeout(onPaymentSuccess, 300);
                 return;
             }
 
-            // 2. Open Razorpay Widget
             const options = {
-                key: result.keyId || 'rzp_test_CHANGE_ME', // Dynamic from backend
+                key: result.keyId || 'rzp_test_CHANGE_ME',
                 amount: result.order.amount,
                 currency: result.order.currency,
                 name: 'EmergiX Video Consult',
                 description: `Consultation with ${selectedDoc.name}`,
                 order_id: result.order.id,
-                prefill: {
-                    name: patientInfo.name,
-                    contact: patientInfo.phone
-                },
-                handler: function (response) {
-                    console.log("Consultation Payment Success:", response);
-                    setModalUI('call'); // Transition directly to call without page refresh
-                },
+                prefill: { name: patientInfo.name, contact: patientInfo.phone },
+                handler: () => onPaymentSuccess(),
                 theme: { color: '#0284C7' }
             };
-            
+
             if (window.Razorpay) {
                 const rzp = new window.Razorpay(options);
-                rzp.on('payment.failed', function (response) {
-                    alert('Payment failed. Please try again.');
-                });
+                rzp.on('payment.failed', () => alert('Payment failed. Please try again.'));
                 rzp.open();
             } else {
-                alert('Razorpay SDK failed to load. Are you connected to the internet?');
+                alert('Razorpay SDK failed to load.');
             }
         } catch (err) {
             console.error('Payment Error:', err);
@@ -144,14 +314,91 @@ const VideoConsultationPage = () => {
         }
     };
 
+    const startWebRTC = useCallback(async (rid) => {
+        setCallStatus('Initializing...');
+        setCallTime(0);
+        setChatMessages([]);
+        setCallConnected(false);
+
+        const manager = new PatientWebRTC({
+            roomId: rid,
+            onRemoteStream: (stream) => {
+                if (remoteVideoRef.current) {
+                    remoteVideoRef.current.srcObject = stream;
+                    remoteVideoRef.current.play().catch(() => {});
+                }
+                setCallConnected(true);
+            },
+            onStatusChange: (status) => {
+                setCallStatus(status);
+                if (status === 'connected' || status === 'Call connected') setCallConnected(true);
+            },
+            onChatMessage: (msg) => setChatMessages(prev => [...prev, msg]),
+            onPeerLeft: () => {
+                setCallStatus('Doctor left the call');
+                setCallConnected(false);
+                handleEndCall();
+            }
+        });
+
+        try {
+            const localStream = await manager.start();
+            if (localVideoRef.current) {
+                localVideoRef.current.srcObject = localStream;
+                localVideoRef.current.play().catch(() => {});
+            }
+            webrtcRef.current = manager;
+        } catch (err) {
+            console.error('WebRTC start failed:', err);
+            setCallStatus('Camera/mic access denied. Check browser permissions.');
+        }
+    }, []);
+
     const handleEndCall = () => {
+        if (webrtcRef.current) {
+            webrtcRef.current.endCall();
+            webrtcRef.current = null;
+        }
+        // Clean up video elements
+        if (localVideoRef.current) localVideoRef.current.srcObject = null;
+        if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
+        setCallConnected(false);
+        setCallTime(0);
         setModalUI('ended');
         setTimeout(() => {
             setModalUI(null);
             setSelectedDoc(null);
-            setPatientInfo({ name: '', phone: '', symptoms: '' });
-            setCallTime(0);
+            setRoomId(null);
+            setCallStatus('');
         }, 3500);
+    };
+
+    const handleMuteToggle = () => {
+        const newMuted = !isMuted;
+        setIsMuted(newMuted);
+        if (webrtcRef.current) webrtcRef.current.toggleMute(newMuted);
+    };
+
+    const handleVideoToggle = () => {
+        const newOff = !isVideoOff;
+        setIsVideoOff(newOff);
+        if (webrtcRef.current) webrtcRef.current.toggleVideo(newOff);
+    };
+
+    const handleSendChat = () => {
+        if (!chatInput.trim()) return;
+        const msg = { from: 'You', text: chatInput.trim() };
+        setChatMessages(prev => [...prev, msg]);
+        if (webrtcRef.current) webrtcRef.current.sendChat(chatInput.trim());
+        setChatInput('');
+    };
+
+    const copyRoomId = () => {
+        if (roomId) {
+            navigator.clipboard.writeText(roomId).then(() => {
+                // Visual feedback handled by button state in render
+            });
+        }
     };
 
     return (
@@ -166,13 +413,14 @@ const VideoConsultationPage = () => {
                 }}>
                     <div style={{ fontSize: '4rem', marginBottom: '1.5rem' }}>✅</div>
                     <h2 style={{ fontSize: '1.8rem', fontWeight: '700', marginBottom: '0.75rem' }}>Consultation Ended</h2>
-                    <p style={{ color: '#94A3B8', fontSize: '1rem' }}>Thank you! A prescription will be sent to your phone.</p>
+                    <p style={{ color: '#94A3B8', fontSize: '1rem' }}>Thank you! Duration: {formatTime(callTime)}</p>
                     <div style={{ marginTop: '1.5rem', width: '200px', height: '4px', background: '#1E293B', borderRadius: '4px', overflow: 'hidden' }}>
                         <div style={{ height: '100%', background: '#2EC4B6', animation: 'shrink 3.5s linear forwards', width: '100%' }}></div>
                     </div>
                     <style>{`@keyframes shrink { from { width: 100%; } to { width: 0%; } }`}</style>
                 </div>
             )}
+
             {/* Header */}
             <div className="vc-header">
                 <h1 className="vc-title">Video Consultation</h1>
@@ -217,7 +465,7 @@ const VideoConsultationPage = () => {
                 <span>Use Instant Connect for fast triage, or schedule when the case is stable.</span>
             </div>
 
-            {/* Grid */}
+            {/* Doctor Grid */}
             {loading ? (
                 <div style={{ textAlign: 'center', padding: '3rem', color: '#64748B' }}>
                     <div className="loader" style={{ margin: '0 auto 1rem' }}></div>
@@ -253,10 +501,7 @@ const VideoConsultationPage = () => {
                                 <span>⏳ {doc.experience} Years Exp.</span>
                             </div>
                             <div className="vc-price">₹{doc.fee} <span style={{ fontSize: '0.85rem', color: '#64748B', fontWeight: '400' }}>/ consult</span></div>
-                            <button
-                                className="vc-btn vc-btn-primary"
-                                onClick={() => handleConsult(doc)}
-                            >
+                            <button className="vc-btn vc-btn-primary" onClick={() => handleConsult(doc)}>
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                                     <rect x="2" y="3" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="2" />
                                     <path d="M8 21h8M12 17v4" stroke="currentColor" strokeWidth="2" />
@@ -268,7 +513,7 @@ const VideoConsultationPage = () => {
                 </div>
             )}
 
-            {/* Modals Overlay */}
+            {/* Booking / Payment Modal */}
             {(modalUI === 'booking' || modalUI === 'payment') && (
                 <div className="modal-overlay open" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <div className="ec-modal-content" style={{ maxWidth: '550px' }}>
@@ -278,7 +523,6 @@ const VideoConsultationPage = () => {
                             <>
                                 <h2 style={{ marginBottom: '0.5rem' }}>Book Consultation</h2>
                                 <p style={{ color: '#64748B', marginBottom: '2rem' }}>with <strong>{selectedDoc.name}</strong> • ₹{selectedDoc.fee}</p>
-
                                 <div className="vc-form-group">
                                     <label>Consultation Type</label>
                                     <select className="vc-select" value={consultType} onChange={e => setConsultType(e.target.value)}>
@@ -286,14 +530,12 @@ const VideoConsultationPage = () => {
                                         <option value="scheduled">Schedule for Later</option>
                                     </select>
                                 </div>
-
                                 {consultType === 'scheduled' && (
                                     <div className="vc-form-group">
                                         <label>Select Date & Time</label>
                                         <input type="datetime-local" className="vc-input" value={dateTime} onChange={e => setDateTime(e.target.value)} />
                                     </div>
                                 )}
-
                                 <div style={{ display: 'flex', gap: '1rem' }}>
                                     <div className="vc-form-group" style={{ flex: 1 }}>
                                         <label>Patient Name</label>
@@ -304,18 +546,14 @@ const VideoConsultationPage = () => {
                                         <input type="tel" className="vc-input" value={patientInfo.phone} onChange={e => setPatientInfo({ ...patientInfo, phone: e.target.value })} placeholder="+91" />
                                     </div>
                                 </div>
-
                                 <div className="vc-form-group">
                                     <label>Brief Symptoms / Reason for Visit</label>
                                     <textarea className="vc-textarea" rows="3" value={patientInfo.symptoms} onChange={e => setPatientInfo({ ...patientInfo, symptoms: e.target.value })} placeholder="E.g., High fever for 2 days..."></textarea>
                                 </div>
-
                                 <div style={{ marginTop: '2rem' }}>
-                                    <button
-                                        className="vc-btn vc-btn-primary"
-                                        disabled={!patientInfo.name || !patientInfo.phone}
-                                        onClick={() => setModalUI('payment')}
-                                    >Proceed to Payment — ₹{selectedDoc.fee}</button>
+                                    <button className="vc-btn vc-btn-primary" disabled={!patientInfo.name || !patientInfo.phone} onClick={() => setModalUI('payment')}>
+                                        Proceed to Payment — ₹{selectedDoc.fee}
+                                    </button>
                                 </div>
                             </>
                         )}
@@ -324,26 +562,17 @@ const VideoConsultationPage = () => {
                             <>
                                 <h2 style={{ marginBottom: '0.5rem' }}>Payment</h2>
                                 <p style={{ color: '#64748B', marginBottom: '2rem' }}>Secure checkout for {selectedDoc.name}</p>
-
                                 <div style={{ background: '#F8FAFC', padding: '1.5rem', borderRadius: '12px', textAlign: 'center', marginBottom: '2rem', border: '1px solid #E2E8F0' }}>
                                     <div style={{ fontSize: '1rem', color: '#64748B', marginBottom: '0.5rem' }}>Consultation Fee</div>
                                     <div style={{ fontSize: '3rem', fontWeight: '700', color: '#2B7FFF' }}>₹{selectedDoc.fee}</div>
                                 </div>
-
-                                <button 
-                                    className="vc-btn vc-btn-primary" 
-                                    onClick={handleRazorpayPayment}
-                                    disabled={isPaying}
-                                    style={{ background: '#0284C7', borderColor: '#0284C7' }}
-                                >
+                                <button className="vc-btn vc-btn-primary" onClick={handleRazorpayPayment} disabled={isPaying} style={{ background: '#0284C7', borderColor: '#0284C7' }}>
                                     {isPaying ? (
                                         <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                                            <div className="loader" style={{ width: '18px', height: '18px', borderSize: '2px' }}></div>
+                                            <div className="loader" style={{ width: '18px', height: '18px' }}></div>
                                             Processing...
                                         </span>
-                                    ) : (
-                                        <>Pay & Connect with Razorpay</>
-                                    )}
+                                    ) : <>Pay & Connect with Razorpay</>}
                                 </button>
                                 <div style={{ marginTop: '1rem', textAlign: 'center', opacity: 0.6, fontSize: '0.8rem' }}>
                                     🔒 Secure payment powered by <strong>Razorpay</strong>
@@ -355,49 +584,157 @@ const VideoConsultationPage = () => {
                 </div>
             )}
 
-            {/* Video Call Full Screen */}
+            {/* ── REAL VIDEO CALL SCREEN ── */}
             {modalUI === 'call' && (
                 <div className="vc-call-screen">
+                    {/* Header */}
                     <div className="vc-call-header">
-                        <div>
-                            <div style={{ fontWeight: '600', fontSize: '1.1rem' }}>{selectedDoc.name}</div>
-                            <div style={{ fontSize: '0.85rem', color: '#94A3B8' }}>{selectedDoc.specialization}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div className={`vc-live-dot ${callConnected ? 'live' : 'waiting'}`}></div>
+                            <div>
+                                <div style={{ fontWeight: '600', fontSize: '1.1rem' }}>{selectedDoc && selectedDoc.name}</div>
+                                <div style={{ fontSize: '0.82rem', color: '#94A3B8' }}>{selectedDoc && selectedDoc.specialization}</div>
+                            </div>
                         </div>
-                        <div className="vc-timer">
-                            <span style={{ color: '#2EC4B6' }}>● LIVE</span> &nbsp; {formatTime(callTime)}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                            <div className="vc-call-status-badge">{callStatus || 'Connecting...'}</div>
+                            {callConnected && (
+                                <div className="vc-timer">
+                                    <span style={{ color: '#2EC4B6', marginRight: '6px' }}>●</span>{formatTime(callTime)}
+                                </div>
+                            )}
                         </div>
                     </div>
 
-                    <div className="vc-call-body">
-                        <div className="vc-video-main">
-                            <span style={{ fontSize: '4rem' }}>👨‍⚕️</span>
-                            <div style={{ position: 'absolute', bottom: '20px', left: '20px', background: 'rgba(0,0,0,0.5)', padding: '4px 12px', borderRadius: '12px', color: 'white', fontSize: '0.9rem' }}>{selectedDoc.name}</div>
+                    {/* Room ID share banner */}
+                    {roomId && !callConnected && (
+                        <div className="vc-room-banner">
+                            <span>Share Room ID with doctor:</span>
+                            <code className="vc-room-code">{roomId}</code>
+                            <button className="vc-copy-btn" onClick={copyRoomId} title="Copy Room ID">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" strokeWidth="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" strokeWidth="2"/></svg>
+                                Copy
+                            </button>
+                        </div>
+                    )}
 
-                            {/* PiP */}
+                    {/* Call Body */}
+                    <div className="vc-call-body">
+                        {/* Main video area */}
+                        <div className="vc-video-main">
+                            {/* Remote (Doctor) video — full size */}
+                            <video
+                                ref={remoteVideoRef}
+                                className="vc-video-stream remote"
+                                autoPlay
+                                playsInline
+                                style={{ display: callConnected ? 'block' : 'none' }}
+                            />
+                            {/* Waiting overlay */}
+                            {!callConnected && (
+                                <div className="vc-waiting-overlay">
+                                    <div className="vc-pulse-ring"></div>
+                                    <div className="vc-doc-avatar-large">{selectedDoc && selectedDoc.name.charAt(0)}</div>
+                                    <p className="vc-waiting-text">{callStatus || 'Waiting for doctor to join...'}</p>
+                                    <p style={{ fontSize: '0.8rem', color: '#64748B', marginTop: '8px' }}>
+                                        Ask your doctor to join with Room ID: <strong style={{ color: '#2B7FFF' }}>{roomId}</strong>
+                                    </p>
+                                </div>
+                            )}
+                            {/* Doctor name label */}
+                            {callConnected && (
+                                <div className="vc-stream-label remote-label">
+                                    {remoteVideoOff ? '🎥 Doc camera off' : `Dr. ${selectedDoc && selectedDoc.name}`}
+                                </div>
+                            )}
+
+                            {/* Local (Patient) PiP video */}
                             <div className="vc-video-patient">
-                                <span style={{ fontSize: '3rem' }}>👤</span>
-                                <div style={{ position: 'absolute', bottom: '8px', left: '8px', background: 'rgba(0,0,0,0.5)', padding: '2px 8px', borderRadius: '6px', color: 'white', fontSize: '0.75rem' }}>You</div>
+                                <video
+                                    ref={localVideoRef}
+                                    className="vc-video-stream local"
+                                    autoPlay
+                                    playsInline
+                                    muted
+                                    style={{ display: isVideoOff ? 'none' : 'block' }}
+                                />
+                                {isVideoOff && (
+                                    <div className="vc-cam-off-placeholder">
+                                        <span style={{ fontSize: '1.8rem' }}>👤</span>
+                                        <span style={{ fontSize: '0.7rem', color: '#94A3B8', marginTop: '4px' }}>Cam Off</span>
+                                    </div>
+                                )}
+                                <div className="vc-stream-label local-label">You</div>
                             </div>
                         </div>
 
+                        {/* Chat Sidebar */}
                         <div className="vc-call-sidebar">
-                            <div className="vc-chat-header">Consultation Chat</div>
+                            <div className="vc-chat-header">💬 Consultation Chat</div>
                             <div className="vc-chat-body">
-                                <div style={{ textAlign: 'center', marginBottom: '1rem' }}>Doctor has joined the call.</div>
+                                {chatMessages.length === 0 ? (
+                                    <div style={{ textAlign: 'center', color: '#475569', fontSize: '0.85rem', padding: '16px' }}>
+                                        {callConnected ? 'Doctor has joined. Chat is live.' : 'Chat will be active once the doctor joins.'}
+                                    </div>
+                                ) : (
+                                    chatMessages.map((msg, i) => (
+                                        <div key={i} className={`vc-chat-msg ${msg.from === 'You' ? 'mine' : 'theirs'}`}>
+                                            <span className="vc-chat-sender">{msg.from}</span>
+                                            <span className="vc-chat-text">{msg.text}</span>
+                                        </div>
+                                    ))
+                                )}
+                                <div ref={chatEndRef} />
                             </div>
                             <div className="vc-chat-input-wrap">
-                                <input type="text" placeholder="Type a message..." />
-                                <button className="btn-circle" style={{ width: '46px', height: '46px', background: '#2B7FFF' }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" stroke="white" strokeWidth="2" strokeLinejoin="round" /></svg></button>
+                                <input
+                                    type="text"
+                                    placeholder="Type a message..."
+                                    value={chatInput}
+                                    onChange={e => setChatInput(e.target.value)}
+                                    onKeyDown={e => e.key === 'Enter' && handleSendChat()}
+                                    disabled={!callConnected}
+                                />
+                                <button className="btn-circle" style={{ width: '46px', height: '46px', background: '#2B7FFF' }} onClick={handleSendChat} disabled={!callConnected}>
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" stroke="white" strokeWidth="2" strokeLinejoin="round" /></svg>
+                                </button>
                             </div>
                         </div>
                     </div>
 
+                    {/* Call Controls */}
                     <div className="vc-call-controls">
-                        <button className="btn-circle bg-gray" title="Mute Audio">🎤</button>
-                        <button className="btn-circle bg-gray" title="Stop Video">📹</button>
-                        <button className="btn-circle bg-red" style={{ width: '64px', height: '64px', fontSize: '1.5rem' }} onClick={handleEndCall} title="End Call">📞</button>
-                        <button className="btn-circle bg-gray" title="Share Screen">💻</button>
-                        <button className="btn-circle bg-gray" title="Attach Document">📎</button>
+                        <button
+                            className={`btn-circle ${isMuted ? 'bg-active' : 'bg-gray'}`}
+                            title={isMuted ? 'Unmute' : 'Mute'}
+                            onClick={handleMuteToggle}
+                        >
+                            {isMuted ? (
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 1a4 4 0 014 4v5a4 4 0 01-8 0V5a4 4 0 014-4z" fill="white" opacity="0.4"/><line x1="3" y1="3" x2="21" y2="21" stroke="white" strokeWidth="2.5"/></svg>
+                            ) : (
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 1a4 4 0 014 4v5a4 4 0 01-8 0V5a4 4 0 014-4z" fill="white"/><path d="M19 10a7 7 0 01-14 0" stroke="white" strokeWidth="2"/><line x1="12" y1="17" x2="12" y2="21" stroke="white" strokeWidth="2"/></svg>
+                            )}
+                        </button>
+                        <button
+                            className={`btn-circle ${isVideoOff ? 'bg-active' : 'bg-gray'}`}
+                            title={isVideoOff ? 'Turn Camera On' : 'Turn Camera Off'}
+                            onClick={handleVideoToggle}
+                        >
+                            {isVideoOff ? (
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M16 3H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2z" fill="white" opacity="0.4"/><path d="M22 8.5l-4 3 4 3V8.5z" fill="white" opacity="0.4"/><line x1="3" y1="3" x2="21" y2="21" stroke="white" strokeWidth="2.5"/></svg>
+                            ) : (
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M16 3H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2z" fill="white"/><path d="M22 8.5l-4 3 4 3V8.5z" fill="white"/></svg>
+                            )}
+                        </button>
+                        <button className="btn-circle bg-red" style={{ width: '64px', height: '64px' }} onClick={handleEndCall} title="End Call">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C9.6 21 3 14.4 3 6c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z" fill="white"/></svg>
+                        </button>
+                        <button className="btn-circle bg-gray" title="Share Screen" onClick={() => alert('Screen sharing requires HTTPS. Available in production.')}>
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="2" y="3" width="20" height="14" rx="2" stroke="white" strokeWidth="2"/><path d="M8 21h8M12 17v4" stroke="white" strokeWidth="2"/></svg>
+                        </button>
+                        <button className="btn-circle bg-gray" title="Attach Document" onClick={() => alert('Document sharing available during call.')}>
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" stroke="white" strokeWidth="2" strokeLinecap="round"/></svg>
+                        </button>
                     </div>
                 </div>
             )}

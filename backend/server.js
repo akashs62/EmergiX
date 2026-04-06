@@ -2,6 +2,8 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const http = require('http');
+const { WebSocketServer } = require('ws');
 const { connectDB } = require('./config/db');
 
 const app = express();
@@ -51,6 +53,7 @@ app.use('/api/stats', require('./routes/stats'));
 app.use('/api/razorpay', require('./routes/razorpay'));
 app.use('/api/triage', require('./routes/triage'));
 app.use('/api/maps', require('./routes/maps'));
+app.use('/api/rooms', require('./routes/rooms'));
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Health Check
@@ -91,12 +94,112 @@ app.use((err, req, res, next) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// WebRTC Signaling Server (WebSocket)
+// Rooms: Map<roomId, Map<role, ws>>
+// ─────────────────────────────────────────────────────────────────────────────
+function attachSignalingServer(httpServer) {
+    const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+    // rooms: roomId → { patient: ws|null, doctor: ws|null }
+    const signalingRooms = new Map();
+
+    wss.on('connection', (ws, req) => {
+        const url = new URL(req.url, `http://${req.headers.host}`);
+        const roomId = url.searchParams.get('roomId');
+        const role = url.searchParams.get('role'); // 'patient' | 'doctor'
+
+        if (!roomId || !role) {
+            ws.send(JSON.stringify({ type: 'error', message: 'roomId and role are required' }));
+            ws.close();
+            return;
+        }
+
+        console.log(`[WS] ${role} joined room: ${roomId}`);
+
+        // Ensure the room exists in our signaling map
+        if (!signalingRooms.has(roomId)) {
+            signalingRooms.set(roomId, { patient: null, doctor: null });
+        }
+        const room = signalingRooms.get(roomId);
+
+        // Store connection
+        room[role] = ws;
+        ws._roomId = roomId;
+        ws._role = role;
+
+        // Notify the joining peer they're in
+        ws.send(JSON.stringify({ type: 'joined', role, roomId }));
+
+        // If both peers are now present, notify both that they should start negotiation
+        if (room.patient && room.doctor) {
+            console.log(`[WS] Both peers in room ${roomId} — signaling ready`);
+            // Doctor sends offer, so tell doctor "ready"
+            room.doctor.send(JSON.stringify({ type: 'ready', roomId }));
+            room.patient.send(JSON.stringify({ type: 'peer-joined', role: 'doctor' }));
+        }
+
+        ws.on('message', (data) => {
+            let msg;
+            try { msg = JSON.parse(data); } catch { return; }
+
+            const peer = role === 'patient' ? room.doctor : room.patient;
+            if (!peer || peer.readyState !== 1 /* OPEN */) {
+                // Queue or silently drop — peer not connected yet
+                return;
+            }
+
+            // Forward signaling messages to the other peer
+            switch (msg.type) {
+                case 'offer':
+                case 'answer':
+                case 'ice-candidate':
+                case 'chat':
+                case 'toggle-video':
+                case 'toggle-audio':
+                case 'end-call':
+                    peer.send(JSON.stringify(msg));
+                    break;
+                default:
+                    console.warn(`[WS] Unknown message type: ${msg.type}`);
+            }
+        });
+
+        ws.on('close', () => {
+            console.log(`[WS] ${role} left room: ${roomId}`);
+            const other = role === 'patient' ? room.doctor : room.patient;
+            room[role] = null;
+
+            // Notify the other peer
+            if (other && other.readyState === 1) {
+                other.send(JSON.stringify({ type: 'peer-left', role }));
+            }
+
+            // Clean up if both gone
+            if (!room.patient && !room.doctor) {
+                signalingRooms.delete(roomId);
+                console.log(`[WS] Room ${roomId} cleaned up`);
+            }
+        });
+
+        ws.on('error', (err) => {
+            console.error(`[WS] Error for ${role} in ${roomId}:`, err.message);
+        });
+    });
+
+    console.log('🔌 WebRTC signaling server attached at /ws');
+    return wss;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Start Server
 // ─────────────────────────────────────────────────────────────────────────────
 if (require.main === module) {
-    app.listen(PORT, () => {
+    const httpServer = http.createServer(app);
+    attachSignalingServer(httpServer);
+
+    httpServer.listen(PORT, () => {
         console.log(`\n🚑 EmergiX backend is live at http://localhost:${PORT}`);
-        console.log(`   Health check: http://localhost:${PORT}/api/health\n`);
+        console.log(`   Health check: http://localhost:${PORT}/api/health`);
+        console.log(`   WS signaling: ws://localhost:${PORT}/ws\n`);
     });
 }
 
