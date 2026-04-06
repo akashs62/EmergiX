@@ -12,6 +12,14 @@ const DoctorProfilePage = () => {
     const [bookingState, setBookingState] = useState('idle'); // 'idle' | 'loading' | 'success' | 'error'
     const [confirmedId, setConfirmedId] = useState(null);
 
+    // Instant consult payment + call state
+    const [showPayModal, setShowPayModal] = useState(false);
+    const [instantPatient, setInstantPatient] = useState({ name: '', phone: '', symptoms: '' });
+    const [isPaying, setIsPaying] = useState(false);
+    const [callActive, setCallActive] = useState(false);
+    const [callTime, setCallTime] = useState(0);
+    const [callEnded, setCallEnded] = useState(false);
+
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         const id = params.get('id');
@@ -25,7 +33,90 @@ const DoctorProfilePage = () => {
                 })
                 .catch(err => console.error('Error fetching doctor:', err));
         }
+
+        // Dynamically load Razorpay SDK if not present
+        if (!window.Razorpay) {
+            const script = document.createElement('script');
+            script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+            document.head.appendChild(script);
+        }
     }, []);
+
+    // Call timer
+    useEffect(() => {
+        let interval = null;
+        if (callActive) {
+            interval = setInterval(() => setCallTime(prev => prev + 1), 1000);
+        } else {
+            setCallTime(0);
+            if (interval) clearInterval(interval);
+        }
+        return () => clearInterval(interval);
+    }, [callActive]);
+
+    const formatTime = (secs) => {
+        const m = Math.floor(secs / 60).toString().padStart(2, '0');
+        const s = (secs % 60).toString().padStart(2, '0');
+        return `${m}:${s}`;
+    };
+
+    const handleInstantConsultPayment = async () => {
+        if (!doctor) return;
+        const effectiveFee = (doctor.fee && doctor.fee > 0) ? doctor.fee : 500;
+        setIsPaying(true);
+        try {
+            const response = await fetch(`${API_Base}/api/razorpay/create-order`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ amount: effectiveFee * 100, receipt: `consult_${doctor.id}` })
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || 'Failed to create order');
+
+            if (result.order.isMock) {
+                // Mock mode — skip Razorpay widget and go straight to call
+                console.warn('Using mock payment:', result.message);
+                setShowPayModal(false);
+                setTimeout(() => setCallActive(true), 400);
+                return;
+            }
+
+            const options = {
+                key: result.keyId,
+                amount: result.order.amount,
+                currency: result.order.currency,
+                name: 'EmergiX Video Consult',
+                description: `Instant consultation with ${doctor.name}`,
+                order_id: result.order.id,
+                prefill: { name: instantPatient.name, contact: instantPatient.phone },
+                handler: function (response) {
+                    console.log('Payment success:', response);
+                    setShowPayModal(false);
+                    setTimeout(() => setCallActive(true), 400);
+                },
+                theme: { color: '#2B7FFF' }
+            };
+
+            const rzp = new window.Razorpay(options);
+            rzp.on('payment.failed', () => alert('Payment failed. Please try again.'));
+            rzp.open();
+        } catch (err) {
+            console.error('Payment error:', err);
+            alert('Payment initialization failed: ' + err.message);
+        } finally {
+            setIsPaying(false);
+        }
+    };
+
+    const handleEndCall = () => {
+        setCallActive(false);
+        setCallEnded(true);
+        setTimeout(() => {
+            setCallEnded(false);
+            setCallTime(0);
+            setInstantPatient({ name: '', phone: '', symptoms: '' });
+        }, 3500);
+    };
 
     const dates = useMemo(() => {
         const ds = [];
@@ -50,6 +141,7 @@ const DoctorProfilePage = () => {
     const isAvailable = doctor.status === "Available";
 
     return (
+        <>
         <div className="dp-container" style={{ maxWidth: '1000px', margin: '60px auto', padding: '0 24px', minHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
             <style dangerouslySetInnerHTML={{
                 __html: `
@@ -207,7 +299,10 @@ const DoctorProfilePage = () => {
                             className={`vc-btn vc-btn-primary ${isAvailable ? 'glow-btn-primary' : 'btn-disabled'}`}
                             disabled={!isAvailable}
                             style={{ flex: 1, padding: '18px', borderRadius: '12px', border: 'none', background: '#2B7FFF', color: 'white', fontWeight: '700', fontSize: '1.05rem', cursor: isAvailable ? 'pointer' : 'not-allowed', transition: 'transform 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-                            onClick={() => alert('Proceeding to instant video connect.')}
+                            onClick={() => {
+                                    setInstantPatient({ name: '', phone: '', symptoms: '' });
+                                    setShowPayModal(true);
+                                }}
                         >
                             {isAvailable && (
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
@@ -382,6 +477,237 @@ const DoctorProfilePage = () => {
                 )}
             </div>
         </div>
+
+        {/* ── Instant Consult Payment Modal ──────────────────── */}
+        {showPayModal && (
+            <div style={{
+                position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                background: 'rgba(15,23,42,0.7)', backdropFilter: 'blur(6px)',
+                zIndex: 9000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem'
+            }}>
+                <div style={{
+                    background: 'white', borderRadius: '24px', padding: '2.5rem',
+                    maxWidth: '480px', width: '100%', boxShadow: '0 32px 72px rgba(0,0,0,0.24)',
+                    position: 'relative'
+                }}>
+                    <button onClick={() => setShowPayModal(false)} style={{
+                        position: 'absolute', top: '20px', right: '20px',
+                        background: '#F1F5F9', border: 'none', borderRadius: '50%',
+                        width: '36px', height: '36px', cursor: 'pointer', fontSize: '1.1rem',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}>✕</button>
+
+                    <h2 style={{ margin: '0 0 0.4rem', fontSize: '1.5rem', color: '#0F172A', fontWeight: '800' }}>Instant Consultation</h2>
+                    <p style={{ color: '#64748B', margin: '0 0 1.5rem', fontSize: '0.95rem' }}>with <strong>{doctor.name}</strong> · {doctor.specialization}</p>
+
+                    {/* Fee Summary */}
+                    <div style={{
+                        background: 'linear-gradient(135deg, #EEF6FF, #E0F2FE)',
+                        border: '1px solid #BFDBFE', borderRadius: '16px',
+                        padding: '1.25rem 1.5rem', marginBottom: '1.5rem',
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                    }}>
+                        <div>
+                            <div style={{ fontSize: '0.8rem', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Consultation Fee</div>
+                            <div style={{ fontSize: '2.2rem', fontWeight: '800', color: '#1E293B', lineHeight: '1.1', marginTop: '4px' }}>₹{doctor.fee}</div>
+                        </div>
+                        <div style={{ background: '#2B7FFF', color: 'white', padding: '10px 18px', borderRadius: '12px', fontWeight: '700', fontSize: '0.9rem' }}>1 Session</div>
+                    </div>
+
+                    {/* Patient Info */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', marginBottom: '1.5rem' }}>
+                        <input
+                            type="text" placeholder="Your Full Name"
+                            value={instantPatient.name}
+                            onChange={e => setInstantPatient({ ...instantPatient, name: e.target.value })}
+                            style={{
+                                padding: '13px 14px', border: '1.5px solid #E2E8F0', borderRadius: '12px',
+                                fontSize: '1rem', fontFamily: 'inherit', outline: 'none', transition: 'border-color 0.2s'
+                            }}
+                            onFocus={e => e.target.style.borderColor = '#2B7FFF'}
+                            onBlur={e => e.target.style.borderColor = '#E2E8F0'}
+                        />
+                        <input
+                            type="tel" placeholder="Phone Number (+91...)"
+                            value={instantPatient.phone}
+                            onChange={e => setInstantPatient({ ...instantPatient, phone: e.target.value })}
+                            style={{
+                                padding: '13px 14px', border: '1.5px solid #E2E8F0', borderRadius: '12px',
+                                fontSize: '1rem', fontFamily: 'inherit', outline: 'none', transition: 'border-color 0.2s'
+                            }}
+                            onFocus={e => e.target.style.borderColor = '#2B7FFF'}
+                            onBlur={e => e.target.style.borderColor = '#E2E8F0'}
+                        />
+                        <textarea
+                            rows="2" placeholder="Brief symptoms / reason for visit..."
+                            value={instantPatient.symptoms}
+                            onChange={e => setInstantPatient({ ...instantPatient, symptoms: e.target.value })}
+                            style={{
+                                padding: '13px 14px', border: '1.5px solid #E2E8F0', borderRadius: '12px',
+                                fontSize: '1rem', fontFamily: 'inherit', outline: 'none', resize: 'none', transition: 'border-color 0.2s'
+                            }}
+                            onFocus={e => e.target.style.borderColor = '#2B7FFF'}
+                            onBlur={e => e.target.style.borderColor = '#E2E8F0'}
+                        />
+                    </div>
+
+                    <button
+                        disabled={!instantPatient.name || !instantPatient.phone || isPaying}
+                        onClick={handleInstantConsultPayment}
+                        style={{
+                            width: '100%', padding: '16px', borderRadius: '12px', border: 'none',
+                            background: (!instantPatient.name || !instantPatient.phone) ? '#E2E8F0' : '#2B7FFF',
+                            color: (!instantPatient.name || !instantPatient.phone) ? '#94A3B8' : 'white',
+                            fontWeight: '700', fontSize: '1.05rem', cursor: (!instantPatient.name || !instantPatient.phone) ? 'not-allowed' : 'pointer',
+                            transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
+                        }}
+                    >
+                        {isPaying ? (
+                            <><div style={{ width: '18px', height: '18px', border: '2px solid rgba(255,255,255,0.3)', borderTop: '2px solid white', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }}></div> Processing...</>
+                        ) : (
+                            <>🔒 Pay ₹{doctor.fee} &amp; Join Call</>
+                        )}
+                    </button>
+                    <div style={{ textAlign: 'center', marginTop: '0.75rem', color: '#94A3B8', fontSize: '0.78rem' }}>
+                        🔒 Secure payment powered by <strong>Razorpay</strong>
+                    </div>
+                    <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+                </div>
+            </div>
+        )}
+
+        {/* ── LIVE Call Screen ──────────────────────────────── */}
+        {callActive && (
+            <div style={{
+                position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                background: '#0F172A', zIndex: 10000, display: 'flex', flexDirection: 'column'
+            }}>
+                {/* Call Header */}
+                <div style={{
+                    background: 'rgba(15,23,42,0.9)', padding: '1rem 2rem',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    color: 'white', borderBottom: '1px solid rgba(255,255,255,0.1)'
+                }}>
+                    <div>
+                        <div style={{ fontWeight: '600', fontSize: '1.1rem' }}>{doctor.name}</div>
+                        <div style={{ fontSize: '0.85rem', color: '#94A3B8' }}>{doctor.specialization}</div>
+                    </div>
+                    <div style={{
+                        background: 'rgba(255,255,255,0.1)', padding: '6px 14px',
+                        borderRadius: '8px', fontFamily: 'monospace', fontSize: '1.1rem', color: 'white'
+                    }}>
+                        <span style={{ color: '#2EC4B6' }}>● LIVE</span>&nbsp; {formatTime(callTime)}
+                    </div>
+                </div>
+
+                {/* Video Area */}
+                <div style={{ flex: 1, display: 'flex', padding: '2rem', gap: '2rem' }}>
+                    <div style={{
+                        flex: 3, background: '#1E293B', borderRadius: '16px',
+                        position: 'relative', display: 'flex', alignItems: 'center',
+                        justifyContent: 'center', overflow: 'hidden',
+                        boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
+                    }}>
+                        <span style={{ fontSize: '4.5rem' }}>👨‍⚕️</span>
+                        <div style={{
+                            position: 'absolute', bottom: '20px', left: '20px',
+                            background: 'rgba(0,0,0,0.55)', padding: '5px 14px',
+                            borderRadius: '8px', color: 'white', fontSize: '0.9rem', fontWeight: '600'
+                        }}>{doctor.name}</div>
+
+                        {/* PiP - Patient */}
+                        <div style={{
+                            position: 'absolute', bottom: '24px', right: '24px',
+                            width: '220px', height: '150px', background: '#334155',
+                            borderRadius: '12px', border: '2px solid white',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.4)'
+                        }}>
+                            <span style={{ fontSize: '3rem' }}>👤</span>
+                            <div style={{
+                                position: 'absolute', bottom: '8px', left: '8px',
+                                background: 'rgba(0,0,0,0.5)', padding: '2px 10px',
+                                borderRadius: '6px', color: 'white', fontSize: '0.75rem'
+                            }}>You</div>
+                        </div>
+                    </div>
+
+                    {/* Chat Sidebar */}
+                    <div style={{
+                        flex: 1, background: '#1E293B', borderRadius: '16px',
+                        display: 'flex', flexDirection: 'column', overflow: 'hidden', maxWidth: '320px'
+                    }}>
+                        <div style={{
+                            padding: '1rem 1.25rem', background: 'rgba(255,255,255,0.05)',
+                            color: 'white', fontWeight: '600', borderBottom: '1px solid rgba(255,255,255,0.06)'
+                        }}>Consultation Chat</div>
+                        <div style={{
+                            flex: 1, padding: '1rem 1.25rem', color: '#94A3B8',
+                            fontSize: '0.9rem', display: 'flex', alignItems: 'flex-end'
+                        }}>
+                            <div>Doctor has joined the call. You can type messages below.</div>
+                        </div>
+                        <div style={{ padding: '0.85rem', background: 'rgba(0,0,0,0.2)', display: 'flex', gap: '0.5rem' }}>
+                            <input type="text" placeholder="Type a message..."
+                                style={{
+                                    flex: 1, background: 'rgba(255,255,255,0.08)', border: 'none',
+                                    padding: '0.75rem 1rem', borderRadius: '8px', color: 'white',
+                                    outline: 'none', fontFamily: 'inherit', fontSize: '0.9rem'
+                                }}
+                            />
+                            <button style={{
+                                width: '44px', height: '44px', borderRadius: '50%', border: 'none',
+                                background: '#2B7FFF', cursor: 'pointer', display: 'flex',
+                                alignItems: 'center', justifyContent: 'center'
+                            }}>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" stroke="white" strokeWidth="2" strokeLinejoin="round" /></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Call Controls */}
+                <div style={{
+                    padding: '1.5rem', background: 'rgba(15,23,42,0.9)',
+                    display: 'flex', justifyContent: 'center', gap: '1.5rem', alignItems: 'center'
+                }}>
+                    {[['🎤', 'Mute Audio'], ['📹', 'Stop Video'], ['💻', 'Share Screen'], ['📎', 'Attach']].map(([icon, label]) => (
+                        <button key={label} title={label} style={{
+                            width: '54px', height: '54px', borderRadius: '50%', border: 'none',
+                            background: '#334155', color: 'white', fontSize: '1.2rem',
+                            cursor: 'pointer', transition: 'transform 0.15s'
+                        }} onMouseOver={e => e.currentTarget.style.transform = 'scale(1.08)'}
+                           onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}>{icon}</button>
+                    ))}
+                    <button onClick={handleEndCall} title="End Call" style={{
+                        width: '64px', height: '64px', borderRadius: '50%', border: 'none',
+                        background: '#EF4444', color: 'white', fontSize: '1.5rem',
+                        cursor: 'pointer', transition: 'transform 0.15s, box-shadow 0.15s',
+                        boxShadow: '0 4px 18px rgba(239,68,68,0.45)'
+                    }} onMouseOver={e => e.currentTarget.style.transform = 'scale(1.1)'}
+                       onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}>📞</button>
+                </div>
+            </div>
+        )}
+
+        {/* ── Post-call Thank You Banner ─────────────────────── */}
+        {callEnded && (
+            <div style={{
+                position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                background: '#0F172A', zIndex: 10001,
+                display: 'flex', flexDirection: 'column',
+                alignItems: 'center', justifyContent: 'center', color: 'white'
+            }}>
+                <div style={{ fontSize: '4rem', marginBottom: '1.5rem' }}>✅</div>
+                <h2 style={{ fontSize: '1.8rem', fontWeight: '700', marginBottom: '0.75rem' }}>Consultation Ended</h2>
+                <p style={{ color: '#94A3B8', fontSize: '1rem' }}>Thank you! A prescription will be sent to your phone.</p>
+                <div style={{ marginTop: '1.5rem', width: '200px', height: '4px', background: '#1E293B', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', background: '#2EC4B6', animation: 'shrink 3.5s linear forwards', width: '100%' }}></div>
+                </div>
+                <style>{`@keyframes shrink { from { width: 100%; } to { width: 0%; } }`}</style>
+            </div>
+        )}
+        </>
     );
 };
 

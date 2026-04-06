@@ -80,19 +80,23 @@ const VideoConsultationPage = () => {
     };
 
     const handleConsult = (doc) => {
-        window.location.href = `doctor-profile.html?id=${doc.id}`;
+        setSelectedDoc(doc);
+        setPatientInfo({ name: '', phone: '', symptoms: '' });
+        setConsultType('instant');
+        setDateTime('');
+        setModalUI('booking');
     };
 
     const handleRazorpayPayment = async () => {
         if (!selectedDoc) return;
+        const effectiveFee = (selectedDoc.fee && selectedDoc.fee > 0) ? selectedDoc.fee : 500;
         setIsPaying(true);
         try {
-            // 1. Create order on backend (Consultation Fee dynamically provided, but backend can enforce it)
-            // Since selectedDoc.fee exists, we convert it to paise (multiply by 100)
+            // 1. Create order on backend — use effectiveFee to guard against null/zero fee in DB
             const response = await fetch(`${API_Base}/api/razorpay/create-order`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ amount: selectedDoc.fee * 100, receipt: `doc_${selectedDoc.id}` }) 
+                body: JSON.stringify({ amount: effectiveFee * 100, receipt: `doc_${selectedDoc.id}` }) 
             });
             const result = await response.json();
             
@@ -141,13 +145,34 @@ const VideoConsultationPage = () => {
     };
 
     const handleEndCall = () => {
-        alert('Consultation ended successfully. A prescription will be sent to your phone.');
-        setModalUI(null);
-        setSelectedDoc(null);
+        setModalUI('ended');
+        setTimeout(() => {
+            setModalUI(null);
+            setSelectedDoc(null);
+            setPatientInfo({ name: '', phone: '', symptoms: '' });
+            setCallTime(0);
+        }, 3500);
     };
 
     return (
         <div className="vc-container">
+            {/* Post-call ended banner */}
+            {modalUI === 'ended' && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: '#0F172A', zIndex: 10001,
+                    display: 'flex', flexDirection: 'column',
+                    alignItems: 'center', justifyContent: 'center', color: 'white'
+                }}>
+                    <div style={{ fontSize: '4rem', marginBottom: '1.5rem' }}>✅</div>
+                    <h2 style={{ fontSize: '1.8rem', fontWeight: '700', marginBottom: '0.75rem' }}>Consultation Ended</h2>
+                    <p style={{ color: '#94A3B8', fontSize: '1rem' }}>Thank you! A prescription will be sent to your phone.</p>
+                    <div style={{ marginTop: '1.5rem', width: '200px', height: '4px', background: '#1E293B', borderRadius: '4px', overflow: 'hidden' }}>
+                        <div style={{ height: '100%', background: '#2EC4B6', animation: 'shrink 3.5s linear forwards', width: '100%' }}></div>
+                    </div>
+                    <style>{`@keyframes shrink { from { width: 100%; } to { width: 0%; } }`}</style>
+                </div>
+            )}
             {/* Header */}
             <div className="vc-header">
                 <h1 className="vc-title">Video Consultation</h1>
