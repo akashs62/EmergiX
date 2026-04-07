@@ -426,7 +426,7 @@ router.post('/google', async (req, res) => {
                     return res.status(404).json({ error: 'No account found with this email. Please sign up first!' });
                 }
                 
-                // If user doesn't exist at all, create a mock one for social login demo
+                // If user doesn't exist at all, securely register them into the database using their Google profile.
                 const newUsername = generateUsername(cleanRole);
                 const { data: newUser, error } = await db
                     .from('users')

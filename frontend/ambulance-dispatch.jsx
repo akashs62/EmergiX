@@ -323,13 +323,13 @@ const CancelBooking = ({ bookingData, onBack, onConfirmCancel }) => {
 const TrackingScreen = ({ bookingData, onHome, onCancel }) => {
     const [showMap, setShowMap] = useState(false);
 
-    // Mock driver data attached to the booking
-    const driverInfo = {
-        name: 'Sunil Yadav',
-        phone: '+919876511111',
-        phoneDisplay: '+91 98765 11111',
-        rating: 4.8,
-        experience: '6 years'
+    // Dynamic driver data attached to the booking
+    const driverInfo = bookingData.driverInfo || {
+        name: 'Dispatch Staff',
+        phone: '+910000000000',
+        phoneDisplay: '+91 00000 00000',
+        rating: 5,
+        experience: 'N/A'
     };
 
     useEffect(() => {
@@ -720,7 +720,12 @@ const AmbulanceDispatchApp = () => {
 
             const data = await response.json();
             const bookingId = data.bookingId || ('EMR-' + Math.floor(1000 + Math.random() * 9000));
-            return { id: bookingId, ambType: details.ambType, vehicleId: `${details.ambType}-204` };
+            return { 
+                id: bookingId, 
+                ambType: details.ambType, 
+                vehicleId: data.vehicleId || `${details.ambType}-204`,
+                driverInfo: data.driverUser
+            };
         } catch (error) {
             return {
                 id: 'EMR-' + Math.floor(1000 + Math.random() * 9000),

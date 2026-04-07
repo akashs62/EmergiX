@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { isConnected, getSupabaseAdmin } = require('../config/supabase');
 const { protect, authorize } = require('../middleware/auth');
+const { memDrivers } = require('../config/memdb');
 
 const genBookingId = () => `EMG-${Math.floor(10000 + Math.random() * 90000)}`;
 const genVehicleId = (type) => `${type}-${Math.floor(100 + Math.random() * 900)}`;
@@ -85,13 +86,19 @@ router.post('/', async (req, res) => {
 
         if (error) throw error;
 
+        // Find a random driver for demonstration
+        const assignedDriver = memDrivers && memDrivers.length > 0 
+            ? memDrivers[Math.floor(Math.random() * memDrivers.length)] 
+            : { name: 'Dispatch Staff', phone: 'Unknown', rating: 5, experience: 'N/A' };
+
         return res.status(201).json({
             status: 'success',
             message: 'Ambulance dispatched successfully.',
             bookingId: data.booking_id,
             vehicleId: data.vehicle_id,
             ambType: data.amb_type,
-            eta
+            eta,
+            driverUser: assignedDriver
         });
     } catch (err) {
         console.error('Booking error:', err);

@@ -5,16 +5,9 @@ const API_Base = window.EmergiXConfig ? window.EmergiXConfig.API_BASE_URL : '';
 
 // ── Data Store ──
 const DB = {
-    ambulances: [
-        { id: 'AMB-201', plate: 'DL-01-AX-1001', type: 'Advanced Life Support', status: 'active', location: 'Okhla, Delhi', lastPing: 'Just now' },
-        { id: 'AMB-202', plate: 'DL-02-BY-2002', type: 'Basic Life Support', status: 'active', location: 'Gurgaon Sec 44', lastPing: 'Just now' },
-        { id: 'AMB-203', plate: 'UP-16-CZ-3003', type: 'Advanced Life Support', status: 'maintenance', location: 'Noida Workshop', lastPing: '1 day ago' }
-    ],
+    ambulances: [],
     dispatches: [],
-    drivers: [
-        { id: 'D1', name: 'Sunil Yadav', status: 'on-duty', phone: '+91 98765 11111' },
-        { id: 'D2', name: 'Manoj Tiwari', status: 'on-duty', phone: '+91 98765 22222' }
-    ],
+    drivers: [],
     notifications: [
         { id: 'N0', text: 'Fleet management system live.', time: 'Just now', type: 'info', read: false }
     ]
@@ -31,13 +24,29 @@ async function initDashboard() {
     bindNotifications();
     bindTopActions();
     
-    // Fetch live dispatches
+    // Fetch live data
+    await fetchLiveFleet();
     await fetchLiveDispatches();
     
     showView('dashboard');
 }
 
 // ── Fetch Logic ──
+async function fetchLiveFleet() {
+    const token = localStorage.getItem('token');
+    try {
+        const ambRes = await fetch(`${API_Base}/api/fleet/ambulances`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const ambResult = await ambRes.json();
+        if (ambResult.status === 'success') DB.ambulances = ambResult.data;
+
+        const drvRes = await fetch(`${API_Base}/api/fleet/drivers`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const drvResult = await drvRes.json();
+        if (drvResult.status === 'success') DB.drivers = drvResult.data;
+    } catch (err) {
+        console.error('Failed to fetch fleet:', err);
+    }
+}
+
 async function fetchLiveDispatches() {
     try {
         const token = localStorage.getItem('token');

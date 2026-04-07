@@ -28,11 +28,14 @@ let notifOpen = false;
 let consultationActive = false;
 let consultationTimer = null;
 let consultationSeconds = 0;
-
-// ── WebRTC State ──
 let docWebRTC = null;
 let docCallConnected = false;
 let docRoomId = null;
+
+let activeCalls = [];
+let activeRoomsInterval = null;
+
+// ── WebRTC State ──
 
 // ─── ICE Config ───────────────────────────────────────────────────────────────
 const ICE_CONFIG = {
@@ -417,7 +420,16 @@ function updateApptStatus(id, status) {
     if (a) a.status = status;
     closeModal();
     showToast(`Appointment ${status}`, 'success');
-    if (currentView === 'dashboard') renderDashboard();
+    if (currentView === 'schedule') renderSchedule();
+    if (currentView === 'settings') renderSettings();
+
+    // Start room polling if view is consultations
+    if (currentView === 'consultations') {
+        startRoomPolling();
+    } else {
+        if (activeRoomsInterval) clearInterval(activeRoomsInterval);
+        activeRoomsInterval = null;
+    }
 }
 
 // ── Patients View ──
@@ -502,6 +514,28 @@ function saveNewPatient() {
 }
 
 // ── Consultations View ──
+function startRoomPolling() {
+    if (activeRoomsInterval) clearInterval(activeRoomsInterval);
+    const fetchRooms = async () => {
+        if (currentView !== 'consultations' || consultationActive) return;
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch(`${API_Base}/api/rooms/active`, { headers: { 'Authorization': 'Bearer ' + token } });
+            const data = await res.json();
+            if (data.status === 'success') {
+                const newString = JSON.stringify(data.activeRooms);
+                const oldString = JSON.stringify(activeCalls);
+                if (oldString !== newString) {
+                    activeCalls = data.activeRooms;
+                    renderConsultations();
+                }
+            }
+        } catch(e) {}
+    };
+    fetchRooms();
+    activeRoomsInterval = setInterval(fetchRooms, 3000);
+}
+
 function renderConsultations() {
     const panel = document.getElementById('view-consultations');
     const pending = DB.appointments.filter(a => a.status === 'pending' || a.status === 'urgent');
@@ -524,15 +558,25 @@ function renderConsultations() {
                     </div>`).join('')}
             </div>
             <div style="background:#fff;border-radius:16px;border:1px solid #e2e8f0;padding:28px;">
-                <h3 style="font-size:16px;font-weight:600;margin-bottom:8px;">🔗 Join by Room ID</h3>
-                <p style="color:#64748b;font-size:13px;margin-bottom:14px;">Enter the Room ID the patient received after payment</p>
-                <input id="doc-room-id-input" placeholder="room-123-abc..." style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;margin-bottom:12px;font-family:'Inter',sans-serif;box-sizing:border-box;transition:border-color 0.2s;" onfocus="this.style.borderColor='#4f46e5'" onblur="this.style.borderColor='#e2e8f0'">
-                <input id="doc-patient-name" placeholder="Patient name (for display)" style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;margin-bottom:12px;font-family:'Inter',sans-serif;box-sizing:border-box;">
-                <button onclick="joinRoomById()" style="width:100%;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;font-weight:700;cursor:pointer;font-size:14px;letter-spacing:0.3px;">🎥 Join Video Call</button>
+                <h3 style="font-size:16px;font-weight:600;margin-bottom:8px;">🚨 Incoming Live Calls</h3>
+                <p style="color:#64748b;font-size:13px;margin-bottom:14px;">Instant connection mapped from patient bookings.</p>
+                <div id="incoming-calls-container">
+                    ${activeCalls.length === 0 ? '<div style="padding:14px;background:#f8fafc;border-radius:8px;color:#94a3b8;font-size:13px;text-align:center;">No incoming active calls.</div>' : activeCalls.map(room => `
+                    <div style="padding:16px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;margin-bottom:12px;display:flex;flex-direction:column;gap:12px;">
+                        <div>
+                            <div style="font-weight:700;color:#1e3a8a;font-size:15px;margin-bottom:2px;">Incoming from: ${room.patientName}</div>
+                            <div style="font-size:12px;color:#3b82f6;">Room ID: ${room.roomId}</div>
+                        </div>
+                        <button onclick="launchDoctorCall('${room.roomId}', '${room.patientName}')" style="width:100%;padding:12px;border:none;border-radius:10px;background:#10b981;color:#fff;font-weight:700;cursor:pointer;font-size:14px;box-shadow:0 4px 6px -1px rgba(16,185,129,0.3);">
+                            ▶ Join Call Instantly
+                        </button>
+                    </div>
+                    `).join('')}
+                </div>
             </div>
         </div>
         <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:14px;padding:18px 22px;color:#166534;font-size:13px;">
-            💡 <strong>How it works:</strong> Patient books & pays → receives a Room ID → share it with you → you join using the form above → live WebRTC call begins.
+            💡 <strong>How it works:</strong> Patient books & pays → The backend connects them to a private room mapped to your account → Click "Join Call Instantly" to enter.
         </div>`;
 }
 
@@ -548,14 +592,7 @@ function startConsultation(apptId) {
     launchDoctorCall(rid.trim(), a.patient);
 }
 
-function joinRoomById() {
-    const rid = document.getElementById('doc-room-id-input').value.trim();
-    const patientName = document.getElementById('doc-patient-name').value.trim() || 'Patient';
-    if (!rid) { showToast('Please enter a Room ID', 'warning'); return; }
-    window._currentConsultPatient = patientName;
-    window._currentConsultApptId = null;
-    launchDoctorCall(rid, patientName);
-}
+
 
 async function launchDoctorCall(roomId, patientName) {
     docRoomId = roomId;

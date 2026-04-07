@@ -5,6 +5,7 @@
 const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
+const { protect, authorize } = require('../middleware/auth');
 
 // In-memory room store: roomId → { createdAt, doctorId, patientName }
 const rooms = new Map();
@@ -32,6 +33,21 @@ router.post('/create', (req, res) => {
 
     console.log(`[Rooms] Created room: ${roomId}`);
     res.json({ status: 'success', roomId });
+});
+
+// GET /api/rooms/active — poll for active incoming calls
+router.get('/active', protect, authorize('doctor'), (req, res) => {
+    const doctorId = String(req.user.id);
+    let activeRooms = [];
+    
+    // Find rooms for this doctor
+    for (const [rid, roomObj] of rooms.entries()) {
+        if (roomObj.doctorId === doctorId) {
+            activeRooms.push({ roomId: rid, patientName: roomObj.patientName, createdAt: roomObj.createdAt });
+        }
+    }
+    
+    res.json({ status: 'success', activeRooms });
 });
 
 // GET /api/rooms/:id — validate a room exists

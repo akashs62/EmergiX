@@ -606,18 +606,6 @@ const VideoConsultationPage = () => {
                         </div>
                     </div>
 
-                    {/* Room ID share banner */}
-                    {roomId && !callConnected && (
-                        <div className="vc-room-banner">
-                            <span>Share Room ID with doctor:</span>
-                            <code className="vc-room-code">{roomId}</code>
-                            <button className="vc-copy-btn" onClick={copyRoomId} title="Copy Room ID">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" strokeWidth="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" strokeWidth="2"/></svg>
-                                Copy
-                            </button>
-                        </div>
-                    )}
-
                     {/* Call Body */}
                     <div className="vc-call-body">
                         {/* Main video area */}
@@ -636,9 +624,9 @@ const VideoConsultationPage = () => {
                                     <div className="vc-pulse-ring"></div>
                                     <div className="vc-doc-avatar-large">{selectedDoc && selectedDoc.name.charAt(0)}</div>
                                     <p className="vc-waiting-text">{callStatus || 'Waiting for doctor to join...'}</p>
-                                    <p style={{ fontSize: '0.8rem', color: '#64748B', marginTop: '8px' }}>
-                                        Ask your doctor to join with Room ID: <strong style={{ color: '#2B7FFF' }}>{roomId}</strong>
-                                    </p>
+                                    <div className="vc-status-message">
+                                        Waiting for the doctor to join...
+                                    </div>
                                 </div>
                             )}
                             {/* Doctor name label */}

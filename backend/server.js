@@ -54,6 +54,7 @@ app.use('/api/razorpay', require('./routes/razorpay'));
 app.use('/api/triage', require('./routes/triage'));
 app.use('/api/maps', require('./routes/maps'));
 app.use('/api/rooms', require('./routes/rooms'));
+app.use('/api/fleet', require('./routes/fleet'));
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Health Check
