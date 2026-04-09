@@ -248,7 +248,8 @@ const VideoConsultationPage = () => {
 
     const handleConsult = (doc) => {
         setSelectedDoc(doc);
-        setPatientInfo({ name: '', phone: '', symptoms: '' });
+        const storedName = localStorage.getItem('userName') || '';
+        setPatientInfo({ name: storedName, phone: '', symptoms: '' });
         setConsultType('instant');
         setDateTime('');
         setModalUI('booking');
