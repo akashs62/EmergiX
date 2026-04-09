@@ -287,16 +287,19 @@ function openAddDriverModal() {
                 <div>
                     <label style="display:block;font-size:12px;font-weight:600;margin-bottom:5px;color:#64748b;">Name <span style="color:red;">*</span></label>
                     <input type="text" id="new-drv-name" placeholder="Full name" style="width:100%;padding:10px;border-radius:8px;border:1px solid #e2e8f0;">
+                    <div id="err-drv-name" style="color:red;font-size:10px;margin-top:2px;display:none;"></div>
                 </div>
                 <div>
                     <label style="display:block;font-size:12px;font-weight:600;margin-bottom:5px;color:#64748b;">Age <span style="color:red;">*</span></label>
                     <input type="number" id="new-drv-age" placeholder="Age" style="width:100%;padding:10px;border-radius:8px;border:1px solid #e2e8f0;">
+                    <div id="err-drv-age" style="color:red;font-size:10px;margin-top:2px;display:none;"></div>
                 </div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
                 <div>
                     <label style="display:block;font-size:12px;font-weight:600;margin-bottom:5px;color:#64748b;">Phone <span style="color:red;">*</span></label>
                     <input type="tel" id="new-drv-phone" placeholder="Primary phone" style="width:100%;padding:10px;border-radius:8px;border:1px solid #e2e8f0;">
+                    <div id="err-drv-phone" style="color:red;font-size:10px;margin-top:2px;display:none;"></div>
                 </div>
                 <div>
                     <label style="display:block;font-size:12px;font-weight:600;margin-bottom:5px;color:#64748b;">Alt Phone</label>
@@ -306,6 +309,7 @@ function openAddDriverModal() {
             <div>
                 <label style="display:block;font-size:12px;font-weight:600;margin-bottom:5px;color:#64748b;">License Photo <span style="color:red;">*</span></label>
                 <input type="file" id="new-drv-lic" accept="image/*" style="width:100%;font-size:12px;">
+                <div id="err-drv-lic" style="color:red;font-size:10px;margin-top:2px;display:none;"></div>
             </div>
 
             <h4 style="margin:10px 0 0 0;font-size:14px;color:#ea580c;border-bottom:1px solid #fed7aa;padding-bottom:5px;">Vehicle Details</h4>
@@ -313,10 +317,12 @@ function openAddDriverModal() {
                 <div>
                     <label style="display:block;font-size:12px;font-weight:600;margin-bottom:5px;color:#64748b;">Ambulance Plate No. <span style="color:red;">*</span></label>
                     <input type="text" id="new-drv-amb-no" placeholder="e.g. DL-01-AX-101" style="width:100%;padding:10px;border-radius:8px;border:1px solid #e2e8f0;">
+                    <div id="err-drv-amb-no" style="color:red;font-size:10px;margin-top:2px;display:none;"></div>
                 </div>
                 <div>
                     <label style="display:block;font-size:12px;font-weight:600;margin-bottom:5px;color:#64748b;">Ambulance Pic <span style="color:red;">*</span></label>
                     <input type="file" id="new-drv-amb-pic" accept="image/*" style="width:100%;font-size:12px;">
+                    <div id="err-drv-amb-pic" style="color:red;font-size:10px;margin-top:2px;display:none;"></div>
                 </div>
             </div>
 
@@ -355,9 +361,25 @@ async function submitNewDriver() {
     const drvLicFile = document.getElementById('new-drv-lic').files[0];
     const drvAmbFile = document.getElementById('new-drv-amb-pic').files[0];
 
-    // Validation for required driver fields
-    if (!drvName || !drvAge || !drvPhone || !drvAmbNo || !drvLicFile || !drvAmbFile) {
-        showToast('Please fill all required Driver fields (*)', 'error');
+    // Reset errors
+    const errIds = ['err-drv-name', 'err-drv-age', 'err-drv-phone', 'err-drv-amb-no', 'err-drv-lic', 'err-drv-amb-pic'];
+    errIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) { el.textContent = ''; el.style.display = 'none'; }
+    });
+
+    let hasError = false;
+
+    // Individual checks
+    if (!drvName) { document.getElementById('err-drv-name').textContent = 'Name is required'; document.getElementById('err-drv-name').style.display = 'block'; hasError = true; }
+    if (!drvAge) { document.getElementById('err-drv-age').textContent = 'Age is required'; document.getElementById('err-drv-age').style.display = 'block'; hasError = true; }
+    if (!drvPhone) { document.getElementById('err-drv-phone').textContent = 'Phone is required'; document.getElementById('err-drv-phone').style.display = 'block'; hasError = true; }
+    if (!drvAmbNo) { document.getElementById('err-drv-amb-no').textContent = 'Plate number is required'; document.getElementById('err-drv-amb-no').style.display = 'block'; hasError = true; }
+    if (!drvLicFile) { document.getElementById('err-drv-lic').textContent = 'License photo is required'; document.getElementById('err-drv-lic').style.display = 'block'; hasError = true; }
+    if (!drvAmbFile) { document.getElementById('err-drv-amb-pic').textContent = 'Ambulance photo is required'; document.getElementById('err-drv-amb-pic').style.display = 'block'; hasError = true; }
+
+    if (hasError) {
+        showToast('Please correct the highlighted errors.', 'error');
         return;
     }
 
