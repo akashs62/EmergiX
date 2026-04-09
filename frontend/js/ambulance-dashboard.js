@@ -282,20 +282,20 @@ function openAddDriverModal() {
     openModal(`
         <h3 style="font-family:'Poppins',sans-serif;margin-bottom:20px;">Register New Personnel</h3>
         <div style="display:flex;flex-direction:column;gap:15px;max-height:65vh;overflow-y:auto;padding-right:10px;">
-            <h4 style="margin:0;font-size:14px;color:#ea580c;border-bottom:1px solid #fed7aa;padding-bottom:5px;">Driver Info</h4>
+            <h4 style="margin:0;font-size:14px;color:#ea580c;border-bottom:1px solid #fed7aa;padding-bottom:5px;">Driver Info <small style="color:#64748b;font-weight:400;font-size:11px;">(Required *)</small></h4>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
                 <div>
-                    <label style="display:block;font-size:12px;font-weight:600;margin-bottom:5px;color:#64748b;">Name</label>
+                    <label style="display:block;font-size:12px;font-weight:600;margin-bottom:5px;color:#64748b;">Name <span style="color:red;">*</span></label>
                     <input type="text" id="new-drv-name" placeholder="Full name" style="width:100%;padding:10px;border-radius:8px;border:1px solid #e2e8f0;">
                 </div>
                 <div>
-                    <label style="display:block;font-size:12px;font-weight:600;margin-bottom:5px;color:#64748b;">Age</label>
+                    <label style="display:block;font-size:12px;font-weight:600;margin-bottom:5px;color:#64748b;">Age <span style="color:red;">*</span></label>
                     <input type="number" id="new-drv-age" placeholder="Age" style="width:100%;padding:10px;border-radius:8px;border:1px solid #e2e8f0;">
                 </div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
                 <div>
-                    <label style="display:block;font-size:12px;font-weight:600;margin-bottom:5px;color:#64748b;">Phone</label>
+                    <label style="display:block;font-size:12px;font-weight:600;margin-bottom:5px;color:#64748b;">Phone <span style="color:red;">*</span></label>
                     <input type="tel" id="new-drv-phone" placeholder="Primary phone" style="width:100%;padding:10px;border-radius:8px;border:1px solid #e2e8f0;">
                 </div>
                 <div>
@@ -304,23 +304,23 @@ function openAddDriverModal() {
                 </div>
             </div>
             <div>
-                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:5px;color:#64748b;">License Photo</label>
+                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:5px;color:#64748b;">License Photo <span style="color:red;">*</span></label>
                 <input type="file" id="new-drv-lic" accept="image/*" style="width:100%;font-size:12px;">
             </div>
 
             <h4 style="margin:10px 0 0 0;font-size:14px;color:#ea580c;border-bottom:1px solid #fed7aa;padding-bottom:5px;">Vehicle Details</h4>
             <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:10px;">
                 <div>
-                    <label style="display:block;font-size:12px;font-weight:600;margin-bottom:5px;color:#64748b;">Ambulance Plate No.</label>
+                    <label style="display:block;font-size:12px;font-weight:600;margin-bottom:5px;color:#64748b;">Ambulance Plate No. <span style="color:red;">*</span></label>
                     <input type="text" id="new-drv-amb-no" placeholder="e.g. DL-01-AX-101" style="width:100%;padding:10px;border-radius:8px;border:1px solid #e2e8f0;">
                 </div>
                 <div>
-                    <label style="display:block;font-size:12px;font-weight:600;margin-bottom:5px;color:#64748b;">Ambulance Pic</label>
+                    <label style="display:block;font-size:12px;font-weight:600;margin-bottom:5px;color:#64748b;">Ambulance Pic <span style="color:red;">*</span></label>
                     <input type="file" id="new-drv-amb-pic" accept="image/*" style="width:100%;font-size:12px;">
                 </div>
             </div>
 
-            <h4 style="margin:10px 0 0 0;font-size:14px;color:#ea580c;border-bottom:1px solid #fed7aa;padding-bottom:5px;">Helper Details (Separate Column)</h4>
+            <h4 style="margin:10px 0 0 0;font-size:14px;color:#ea580c;border-bottom:1px solid #fed7aa;padding-bottom:5px;">Helper Details (Optional)</h4>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
                 <div>
                     <label style="display:block;font-size:12px;font-weight:600;margin-bottom:5px;color:#64748b;">Helper Name</label>
@@ -348,25 +348,33 @@ function openAddDriverModal() {
 }
 
 async function submitNewDriver() {
+    const drvName = document.getElementById('new-drv-name').value;
+    const drvAge = document.getElementById('new-drv-age').value;
+    const drvPhone = document.getElementById('new-drv-phone').value;
+    const drvAmbNo = document.getElementById('new-drv-amb-no').value;
+    const drvLicFile = document.getElementById('new-drv-lic').files[0];
+    const drvAmbFile = document.getElementById('new-drv-amb-pic').files[0];
+
+    // Validation for required driver fields
+    if (!drvName || !drvAge || !drvPhone || !drvAmbNo || !drvLicFile || !drvAmbFile) {
+        showToast('Please fill all required Driver fields (*)', 'error');
+        return;
+    }
+
     const payload = {
-        name: document.getElementById('new-drv-name').value,
-        age: document.getElementById('new-drv-age').value,
-        phone: document.getElementById('new-drv-phone').value,
+        name: drvName,
+        age: drvAge,
+        phone: drvPhone,
         altPhone: document.getElementById('new-drv-alt').value,
         address: 'New Entry',
-        ambulanceNumber: document.getElementById('new-drv-amb-no').value,
-        drivingLicensePic: document.getElementById('new-drv-lic').files[0] ? 'mock-license.png' : '',
-        ambulancePic: document.getElementById('new-drv-amb-pic').files[0] ? 'mock-amb.png' : '',
+        ambulanceNumber: drvAmbNo,
+        drivingLicensePic: 'mock-license.png',
+        ambulancePic: 'mock-amb.png',
         helperName: document.getElementById('new-hlp-name').value,
         helperAge: document.getElementById('new-hlp-age').value,
         helperPhone: document.getElementById('new-hlp-phone').value,
         helperLicense: document.getElementById('new-hlp-lic').value
     };
-
-    if (!payload.name || !payload.phone) {
-        showToast('Name and Phone are required.', 'error');
-        return;
-    }
 
     try {
         const token = localStorage.getItem('token');
