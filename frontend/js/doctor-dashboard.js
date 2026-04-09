@@ -179,6 +179,20 @@ class DoctorWebRTC {
     }
 }
 
+async function setDoctorStatus(status) {
+    const userId = localStorage.getItem('userId');
+    if (!userId) return;
+    try {
+        await fetch(`${API_Base}/api/doctors/${userId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status })
+        });
+    } catch (e) {
+        console.error('Failed to update doctor status:', e);
+    }
+}
+
 // ── Init ──
 async function initDashboard() {
     populateUserInfo();
@@ -188,6 +202,15 @@ async function initDashboard() {
     
     // Fetch real data
     await fetchLiveAppointments();
+    
+    // Set status
+    setDoctorStatus('Available');
+
+    // Handle abrupt exit
+    window.addEventListener('beforeunload', () => {
+        const userId = localStorage.getItem('userId');
+        if (userId) navigator.sendBeacon(`${API_Base}/api/doctors/${userId}`, JSON.stringify({ status: 'Inactive' }));
+    });
     
     showView('dashboard');
 }
@@ -285,6 +308,15 @@ function showView(view) {
     document.querySelectorAll('.view-panel').forEach(v => v.style.display = 'none');
     const panel = document.getElementById('view-' + view);
     if (panel) { panel.style.display = 'block'; panel.style.animation = 'fadeInUp 0.4s ease forwards'; }
+
+    if (view === 'consultations') {
+        startRoomPolling();
+    } else {
+        if (activeRoomsInterval) {
+            clearInterval(activeRoomsInterval);
+            activeRoomsInterval = null;
+        }
+    }
 
     switch (view) {
         case 'dashboard': renderDashboard(); break;
@@ -600,6 +632,7 @@ async function launchDoctorCall(roomId, patientName) {
     consultationSeconds = 0;
     docCallConnected = false;
     renderConsultations();
+    setDoctorStatus('Busy');
 
     // Start WebRTC
     try {
@@ -781,6 +814,7 @@ function endConsultation() {
     const duration = formatTime(consultationSeconds);
     consultationSeconds = 0;
     docRoomId = null;
+    setDoctorStatus('Available');
     showToast(`Session completed. Duration: ${duration}`, 'success');
     showView('consultations');
 }
@@ -929,7 +963,8 @@ function closeModal() {
     setTimeout(() => m.style.display = 'none', 250);
 }
 
-function logout() {
+async function logout() {
+    await setDoctorStatus('Inactive');
     localStorage.clear();
     window.location.href = 'signin.html';
 }

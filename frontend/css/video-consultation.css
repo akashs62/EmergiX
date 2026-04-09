@@ -72,6 +72,8 @@
 .status-avail::before { background: #166534; }
 .status-busy { background: #FEE2E2; color: #991B1B; }
 .status-busy::before { background: #991B1B; }
+.status-inactive { background: #F1F5F9; color: #64748B; }
+.status-inactive::before { background: #94A3B8; }
 
 /* ─── Buttons ─────────────────────────────────────────────────────── */
 .vc-btn {

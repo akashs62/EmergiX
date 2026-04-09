@@ -171,7 +171,7 @@ router.get('/:id', async (req, res) => {
 // PUT /api/doctors/:id  — Update doctor profile
 // ─────────────────────────────────────────────────────────────────────────────
 router.put('/:id', async (req, res) => {
-    const { age, experience, fee } = req.body;
+    const { age, experience, fee, status } = req.body;
     
     if (!isConnected()) {
         const docIndex = memUsers.findIndex(u => u.role === 'doctor' && u.id === req.params.id);
@@ -180,6 +180,7 @@ router.put('/:id', async (req, res) => {
         if (age !== undefined) memUsers[docIndex].age = age;
         if (experience !== undefined) memUsers[docIndex].experience = experience;
         if (fee !== undefined) memUsers[docIndex].fee = fee;
+        if (status !== undefined) memUsers[docIndex].status = status;
         
         return res.status(200).json({ 
             status: 'success', 
@@ -194,6 +195,7 @@ router.put('/:id', async (req, res) => {
         if (age !== undefined) updateData.age = age;
         if (experience !== undefined) updateData.experience = experience;
         if (fee !== undefined) updateData.fee = fee;
+        if (status !== undefined) updateData.status = status;
         
         if (Object.keys(updateData).length === 0) {
             return res.status(400).json({ error: 'No data provided to update.' });

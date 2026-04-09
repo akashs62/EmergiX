@@ -191,19 +191,29 @@ const VideoConsultationPage = () => {
     const chatEndRef = useRef(null);
 
     // Fetch doctors
+    // Fetch doctors (Initial + Background polling)
     useEffect(() => {
-        setLoading(true);
-        fetch(`${API_Base}/api/doctors`)
-            .then(res => {
-                if (!res.ok) throw new Error(`Server responded with ${res.status}`);
-                return res.json();
-            })
-            .then(data => {
-                if (data.status === 'success') setDoctors(data.data);
-                else throw new Error(data.error || 'Failed to load doctors');
-            })
-            .catch(err => setError(err.message))
-            .finally(() => setLoading(false));
+        const fetchDocs = (isInitial = false) => {
+            if (isInitial) setLoading(true);
+            fetch(`${API_Base}/api/doctors`)
+                .then(res => {
+                    if (!res.ok) throw new Error(`Server responded with ${res.status}`);
+                    return res.json();
+                })
+                .then(data => {
+                    if (data.status === 'success') {
+                        // Only update if state actually changed to avoid unnecessary re-renders
+                        setDoctors(prev => JSON.stringify(prev) !== JSON.stringify(data.data) ? data.data : prev);
+                    }
+                    else throw new Error(data.error || 'Failed to load doctors');
+                })
+                .catch(err => { if (isInitial) setError(err.message); })
+                .finally(() => { if (isInitial) setLoading(false); });
+        };
+
+        fetchDocs(true); // Initial load
+        const interval = setInterval(() => fetchDocs(false), 5000); // Background poll
+        return () => clearInterval(interval);
     }, []);
 
     // Call timer
@@ -487,8 +497,8 @@ const VideoConsultationPage = () => {
                 <div className="vc-grid">
                     {filteredDocs.map(doc => (
                         <div key={doc.id} className="vc-card">
-                            <div className={`vc-status ${doc.status === 'Available' ? 'status-avail' : 'status-busy'}`}>
-                                {doc.status}
+                            <div className={`vc-status ${doc.status === 'Available' ? 'status-avail' : doc.status === 'Busy' ? 'status-busy' : 'status-inactive'}`}>
+                                {doc.status || 'Inactive'}
                             </div>
                             <div className="vc-card-header">
                                 <div className="vc-avatar">{doc.name ? doc.name.charAt(0).toUpperCase() : 'D'}</div>
@@ -502,7 +512,12 @@ const VideoConsultationPage = () => {
                                 <span>⏳ {doc.experience} Years Exp.</span>
                             </div>
                             <div className="vc-price">₹{doc.fee} <span style={{ fontSize: '0.85rem', color: '#64748B', fontWeight: '400' }}>/ consult</span></div>
-                            <button className="vc-btn vc-btn-primary" onClick={() => handleConsult(doc)}>
+                            <button 
+                                className="vc-btn vc-btn-primary" 
+                                onClick={() => handleConsult(doc)}
+                                disabled={doc.status === 'Inactive'}
+                                style={{ opacity: doc.status === 'Inactive' ? 0.5 : 1, cursor: doc.status === 'Inactive' ? 'not-allowed' : 'pointer' }}
+                            >
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                                     <rect x="2" y="3" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="2" />
                                     <path d="M8 21h8M12 17v4" stroke="currentColor" strokeWidth="2" />
@@ -517,7 +532,7 @@ const VideoConsultationPage = () => {
             {/* Booking / Payment Modal */}
             {(modalUI === 'booking' || modalUI === 'payment') && (
                 <div className="modal-overlay open" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <div className="ec-modal-content" style={{ maxWidth: '550px' }}>
+                    <div className="modal-box" style={{ maxWidth: '550px' }}>
                         <button className="modal-close-btn" style={{ position: 'absolute', right: '24px', top: '24px', background: 'transparent', border: 'none', fontSize: '1.5rem', cursor: 'pointer' }} onClick={() => { setModalUI(null); setSelectedDoc(null); }}>✕</button>
 
                         {modalUI === 'booking' && (
