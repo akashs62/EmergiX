@@ -227,17 +227,167 @@ function renderDispatches() {
 // ── Drivers View ──
 function renderDrivers() {
     const panel = document.getElementById('view-drivers');
+    if (!panel) return;
+    
     panel.innerHTML = `
-        <h2 style="font-family:'Poppins',sans-serif;font-size:22px;font-weight:700;margin-bottom:20px;">Personnel</h2>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px;">
-            ${DB.drivers.map(d => `
-                <div style="background:#fff;border-radius:16px;border:1px solid #e2e8f0;padding:20px;text-align:center;">
-                    <div style="width:48px;height:48px;border-radius:50%;background:#fef2f2;color:#ef4444;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-weight:700;">${d.name.charAt(0)}</div>
-                    <div style="font-weight:700;">${d.name}</div>
-                    <div style="font-size:12px;color:#64748b;margin-bottom:12px;">${d.phone}</div>
-                    <span style="padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600;background:rgba(16,185,129,0.1);color:#059669;">${d.status}</span>
-                </div>`).join('')}
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+            <h2 style="font-family:'Poppins',sans-serif;font-size:22px;font-weight:700;margin:0;">Personnel Roster</h2>
+            <button onclick="openAddDriverModal()" style="padding:10px 20px;border-radius:10px;background:linear-gradient(135deg, #ea580c, #f97316);color:#fff;border:none;font-weight:600;cursor:pointer;box-shadow: 0 4px 12px rgba(234, 88, 12, 0.2);">+ Add Driver</button>
+        </div>
+        <div style="background:#fff;border-radius:16px;border:1px solid #e2e8f0;overflow:hidden;box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
+            <table style="width:100%;border-collapse:collapse;text-align:left;">
+                <thead>
+                    <tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0;">
+                        <th style="padding:16px 20px;font-size:13px;font-weight:700;color:#64748b;text-transform:uppercase;">Driver Unit</th>
+                        <th style="padding:16px 20px;font-size:13px;font-weight:700;color:#64748b;text-transform:uppercase;">Contact & ID</th>
+                        <th style="padding:16px 20px;font-size:13px;font-weight:700;color:#64748b;text-transform:uppercase;">Ambulance</th>
+                        <th style="padding:16px 20px;font-size:13px;font-weight:700;color:#64748b;text-transform:uppercase;background:#fff7ed;">Helper Details (Separate Column)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${DB.drivers.map(d => `
+                        <tr style="border-bottom:1px solid #f1f5f9;transition:background 0.2s;" onmouseover="this.style.background='#fffaf5'" onmouseout="this.style.background='white'">
+                            <td style="padding:16px 20px;">
+                                <div style="display:flex;align-items:center;gap:12px;">
+                                    <div style="width:40px;height:40px;border-radius:50%;background:rgba(234, 88, 12, 0.1);color:#ea580c;display:flex;align-items:center;justify-content:center;font-weight:700;">${d.name.charAt(0)}</div>
+                                    <div>
+                                        <div style="font-weight:700;color:#1e293b;">${d.name}</div>
+                                        <div style="font-size:12px;color:#94a3b8;">${d.age || '--'} years • ${d.id}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td style="padding:16px 20px;">
+                                <div style="font-size:13px;color:#475569;margin-bottom:4px;">📞 ${d.phone}</div>
+                                <div style="font-size:11px;color:#94a3b8;">${d.drivingLicensePic ? '📄 License Uploaded' : '❌ No License Pic'}</div>
+                            </td>
+                            <td style="padding:16px 20px;">
+                                <div style="font-weight:600;font-size:13px;color:#ea580c;">🚑 ${d.ambulanceNumber || 'Not Assigned'}</div>
+                                <div style="font-size:11px;color:#94a3b8;">${d.ambulancePic ? '📸 Amb Pic Attached' : '—'}</div>
+                            </td>
+                            <td style="padding:16px 20px;background:rgba(255, 247, 237, 0.3);">
+                                ${d.helperName ? `
+                                    <div style="font-weight:600;font-size:13px;color:#1e293b;">${d.helperName} <span style="font-weight:400;color:#64748b;">(${d.helperAge || '--'} yrs)</span></div>
+                                    <div style="font-size:12px;color:#64748b;margin-top:2px;">📞 ${d.helperPhone || 'N/A'}</div>
+                                    <div style="font-size:11px;color:#94a3b8;margin-top:2px;">🪪 License: ${d.helperLicense || 'N/A'}</div>
+                                ` : '<span style="font-size:12px;color:#cbd5e1;font-style:italic;">No helper listed</span>'}
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
         </div>`;
+}
+
+function openAddDriverModal() {
+    openModal(`
+        <h3 style="font-family:'Poppins',sans-serif;margin-bottom:20px;">Register New Personnel</h3>
+        <div style="display:flex;flex-direction:column;gap:15px;max-height:65vh;overflow-y:auto;padding-right:10px;">
+            <h4 style="margin:0;font-size:14px;color:#ea580c;border-bottom:1px solid #fed7aa;padding-bottom:5px;">Driver Info</h4>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div>
+                    <label style="display:block;font-size:12px;font-weight:600;margin-bottom:5px;color:#64748b;">Name</label>
+                    <input type="text" id="new-drv-name" placeholder="Full name" style="width:100%;padding:10px;border-radius:8px;border:1px solid #e2e8f0;">
+                </div>
+                <div>
+                    <label style="display:block;font-size:12px;font-weight:600;margin-bottom:5px;color:#64748b;">Age</label>
+                    <input type="number" id="new-drv-age" placeholder="Age" style="width:100%;padding:10px;border-radius:8px;border:1px solid #e2e8f0;">
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div>
+                    <label style="display:block;font-size:12px;font-weight:600;margin-bottom:5px;color:#64748b;">Phone</label>
+                    <input type="tel" id="new-drv-phone" placeholder="Primary phone" style="width:100%;padding:10px;border-radius:8px;border:1px solid #e2e8f0;">
+                </div>
+                <div>
+                    <label style="display:block;font-size:12px;font-weight:600;margin-bottom:5px;color:#64748b;">Alt Phone</label>
+                    <input type="tel" id="new-drv-alt" placeholder="Optional" style="width:100%;padding:10px;border-radius:8px;border:1px solid #e2e8f0;">
+                </div>
+            </div>
+            <div>
+                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:5px;color:#64748b;">License Photo</label>
+                <input type="file" id="new-drv-lic" accept="image/*" style="width:100%;font-size:12px;">
+            </div>
+
+            <h4 style="margin:10px 0 0 0;font-size:14px;color:#ea580c;border-bottom:1px solid #fed7aa;padding-bottom:5px;">Vehicle Details</h4>
+            <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:10px;">
+                <div>
+                    <label style="display:block;font-size:12px;font-weight:600;margin-bottom:5px;color:#64748b;">Ambulance Plate No.</label>
+                    <input type="text" id="new-drv-amb-no" placeholder="e.g. DL-01-AX-101" style="width:100%;padding:10px;border-radius:8px;border:1px solid #e2e8f0;">
+                </div>
+                <div>
+                    <label style="display:block;font-size:12px;font-weight:600;margin-bottom:5px;color:#64748b;">Ambulance Pic</label>
+                    <input type="file" id="new-drv-amb-pic" accept="image/*" style="width:100%;font-size:12px;">
+                </div>
+            </div>
+
+            <h4 style="margin:10px 0 0 0;font-size:14px;color:#ea580c;border-bottom:1px solid #fed7aa;padding-bottom:5px;">Helper Details (Separate Column)</h4>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div>
+                    <label style="display:block;font-size:12px;font-weight:600;margin-bottom:5px;color:#64748b;">Helper Name</label>
+                    <input type="text" id="new-hlp-name" placeholder="Helper full name" style="width:100%;padding:10px;border-radius:8px;border:1px solid #e2e8f0;">
+                </div>
+                <div>
+                    <label style="display:block;font-size:12px;font-weight:600;margin-bottom:5px;color:#64748b;">Helper Age</label>
+                    <input type="number" id="new-hlp-age" placeholder="Age" style="width:100%;padding:10px;border-radius:8px;border:1px solid #e2e8f0;">
+                </div>
+                <div>
+                    <label style="display:block;font-size:12px;font-weight:600;margin-bottom:5px;color:#64748b;">Helper Phone</label>
+                    <input type="tel" id="new-hlp-phone" placeholder="Phone" style="width:100%;padding:10px;border-radius:8px;border:1px solid #e2e8f0;">
+                </div>
+                <div>
+                    <label style="display:block;font-size:12px;font-weight:600;margin-bottom:5px;color:#64748b;">Helper License Info</label>
+                    <input type="text" id="new-hlp-lic" placeholder="License no" style="width:100%;padding:10px;border-radius:8px;border:1px solid #e2e8f0;">
+                </div>
+            </div>
+        </div>
+        <div style="margin-top:20px;display:flex;gap:10px;">
+            <button onclick="closeModal()" style="flex:1;padding:12px;border-radius:8px;border:1px solid #e2e8f0;background:#fff;font-weight:600;cursor:pointer;">Cancel</button>
+            <button onclick="submitNewDriver()" style="flex:2;padding:12px;border-radius:8px;border:none;background:linear-gradient(135deg, #ea580c, #f97316);color:#fff;font-weight:600;cursor:pointer;">Register Personnel</button>
+        </div>
+    `);
+}
+
+async function submitNewDriver() {
+    const payload = {
+        name: document.getElementById('new-drv-name').value,
+        age: document.getElementById('new-drv-age').value,
+        phone: document.getElementById('new-drv-phone').value,
+        altPhone: document.getElementById('new-drv-alt').value,
+        address: 'New Entry',
+        ambulanceNumber: document.getElementById('new-drv-amb-no').value,
+        drivingLicensePic: document.getElementById('new-drv-lic').files[0] ? 'mock-license.png' : '',
+        ambulancePic: document.getElementById('new-drv-amb-pic').files[0] ? 'mock-amb.png' : '',
+        helperName: document.getElementById('new-hlp-name').value,
+        helperAge: document.getElementById('new-hlp-age').value,
+        helperPhone: document.getElementById('new-hlp-phone').value,
+        helperLicense: document.getElementById('new-hlp-lic').value
+    };
+
+    if (!payload.name || !payload.phone) {
+        showToast('Name and Phone are required.', 'error');
+        return;
+    }
+
+    try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${API_Base}/api/fleet/drivers`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify(payload)
+        });
+        const result = await res.json();
+        if (result.status === 'success') {
+            showToast('Personnel added successfully.', 'success');
+            closeModal();
+            await fetchLiveFleet();
+            renderDrivers();
+        } else {
+            showToast(result.error || 'Failed to add personnel.', 'error');
+        }
+    } catch (err) {
+        console.error('Submit error:', err);
+        showToast('Server connection error.', 'error');
+    }
 }
 
 // ── Settings View ──

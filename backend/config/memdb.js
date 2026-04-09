@@ -16,9 +16,33 @@ const memAmbulances = [
 ];
 
 const memDrivers = [
-    { id: 'D1', name: 'Sunil Yadav', status: 'on-duty', phone: '+91 98765 11111', rating: 4.8, experience: '6 years' },
-    { id: 'D2', name: 'Manoj Tiwari', status: 'on-duty', phone: '+91 98765 22222', rating: 4.6, experience: '3 years' },
-    { id: 'D3', name: 'Ravi Kumar', status: 'on-duty', phone: '+91 98765 33333', rating: 4.9, experience: '8 years' }
+    { 
+        id: 'D1', name: 'Sunil Yadav', age: 34, status: 'on-duty', 
+        phone: '+91 98765 11111', altPhone: '+91 98765 11112', address: '123, Okhla Phase III, New Delhi', 
+        rating: 4.8, experience: '6 years', 
+        drivingLicensePic: 'https://placehold.co/100x60?text=License', 
+        ambulanceNumber: 'DL-01-AX-1001', 
+        ambulancePic: 'https://placehold.co/100x60?text=Ambulance',
+        helperName: 'Raju Bhai', helperAge: 24, helperPhone: '+91 88888 11111', helperLicense: 'Learner'
+    },
+    { 
+        id: 'D2', name: 'Manoj Tiwari', age: 29, status: 'on-duty', 
+        phone: '+91 98765 22222', altPhone: '', address: 'Sector 44, Gurgaon, Haryana', 
+        rating: 4.6, experience: '3 years', 
+        drivingLicensePic: 'https://placehold.co/100x60?text=License', 
+        ambulanceNumber: 'DL-02-BY-2002', 
+        ambulancePic: 'https://placehold.co/100x60?text=Ambulance',
+        helperName: '', helperAge: null, helperPhone: '', helperLicense: ''
+    },
+    { 
+        id: 'D3', name: 'Ravi Kumar', age: 41, status: 'on-duty', 
+        phone: '+91 98765 33333', altPhone: '+91 98765 33334', address: 'Block C, Noida Sector 62, UP', 
+        rating: 4.9, experience: '8 years', 
+        drivingLicensePic: 'https://placehold.co/100x60?text=License', 
+        ambulanceNumber: 'UP-16-CZ-3003', 
+        ambulancePic: 'https://placehold.co/100x60?text=Ambulance',
+        helperName: 'Sanjay Kumar', helperAge: 26, helperPhone: '+91 88888 33333', helperLicense: 'DL-112233'
+    }
 ];
 
 module.exports = {
