@@ -423,13 +423,121 @@ async function submitNewDriver() {
 // ── Settings View ──
 function renderSettings() {
     const panel = document.getElementById('view-settings');
-    const email = localStorage.getItem('userEmail') || '';
+    if (!panel) return;
+
+    const email = localStorage.getItem('userEmail') || 'driver@emergix.com';
+    const userName = localStorage.getItem('userName') || 'Shivani Agarwal';
+    
+    // Find the driver record that matches the logged-in user
+    let driver = DB.drivers.find(d => d.name.toLowerCase() === userName.toLowerCase());
+    
+    // Fallback/Demodata if specific driver record isn't found
+    if (!driver) {
+        driver = {
+            name: userName,
+            phone: '+91 98765 43210',
+            ambulanceNumber: 'DL-04-EX-7788',
+            drivingLicensePic: 'https://images.unsplash.com/photo-1590402485284-a9df1933c872?auto=format&fit=crop&q=80&w=800',
+            ambulancePic: 'https://images.unsplash.com/photo-1587747832709-661acb39a7b9?auto=format&fit=crop&q=80&w=800',
+            photo: 'https://ui-avatars.com/api/?name=' + encodeURIComponent(userName) + '&background=ea580c&color=fff&size=200',
+            rating: 4.9,
+            experience: '4 Years'
+        };
+    }
+
+    // Find ambulance type
+    const amb = DB.ambulances.find(a => a.plate === driver.ambulanceNumber || a.id === driver.ambulanceNumber);
+    const ambType = amb ? amb.type : 'Advanced Life Support (ALS)';
+
     panel.innerHTML = `
-        <h2 style="font-family:'Poppins',sans-serif;font-size:22px;font-weight:700;margin-bottom:20px;">Settings</h2>
-        <div style="max-width:600px;background:#fff;border-radius:16px;border:1px solid #e2e8f0;padding:28px;">
-            <p style="color:#64748b;margin-bottom:20px;">Fleet management portal settings for <strong>${email}</strong></p>
-            <button onclick="logout()" style="width:100%;padding:12px;border:1px solid #ef4444;border-radius:10px;color:#ef4444;background:#fff;font-weight:600;cursor:pointer;">Sign Out</button>
-        </div>`;
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+            <h2 style="font-family:'Poppins',sans-serif; font-size:24px; font-weight:700; margin:0; color:var(--amb-text);">My Profile & Settings</h2>
+            <button onclick="logout()" style="padding:10px 20px; border:1px solid #ef4444; border-radius:10px; color:#ef4444; background:white; font-weight:600; cursor:pointer; transition:all 0.2s; font-family:'Inter', sans-serif;" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='white'">Sign Out</button>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:24px;">
+            <!-- Left Column: Personal & Contact -->
+            <div style="background:white; border-radius:24px; border:1px solid #e2e8f0; padding:32px; box-shadow:0 12px 30px rgba(15, 23, 42, 0.04); position:relative; overflow:hidden;">
+                <div style="position:absolute; top:-10px; right:-10px; width:120px; height:120px; background:rgba(234, 88, 12, 0.05); border-radius:50%; z-index:0;"></div>
+                
+                <div style="position:absolute; top:32px; right:32px; width:88px; height:88px; border-radius:50%; border:4px solid white; overflow:hidden; box-shadow:0 8px 20px rgba(0,0,0,0.12); z-index:1;">
+                    <img src="${driver.photo || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(driver.name)}" style="width:100%; height:100%; object-fit:cover;" alt="Profile">
+                </div>
+                
+                <h3 style="font-family:'Poppins',sans-serif; font-size:13px; text-transform:uppercase; letter-spacing:1.5px; color:#ea580c; margin-bottom:28px; font-weight:700;">Personal Information</h3>
+                
+                <div style="margin-bottom:20px; position:relative; z-index:1;">
+                    <label style="display:block; font-size:12px; color:#94a3b8; margin-bottom:6px; font-weight:600; text-transform:uppercase;">Full Name</label>
+                    <div style="font-size:20px; font-weight:700; color:#1e293b;">${driver.name}</div>
+                </div>
+
+                <div style="margin-bottom:20px;">
+                    <label style="display:block; font-size:12px; color:#94a3b8; margin-bottom:6px; font-weight:600; text-transform:uppercase;">Contact Number</label>
+                    <div style="font-size:16px; font-weight:600; color:#475569;">${driver.phone}</div>
+                </div>
+
+                <div style="margin-bottom:0;">
+                    <label style="display:block; font-size:12px; color:#94a3b8; margin-bottom:6px; font-weight:600; text-transform:uppercase;">Email Address</label>
+                    <div style="font-size:16px; font-weight:600; color:#475569;">${email}</div>
+                </div>
+            </div>
+
+            <!-- Right Column: Vehicle Details -->
+            <div style="background:white; border-radius:24px; border:1px solid #e2e8f0; padding:32px; box-shadow:0 12px 30px rgba(15, 23, 42, 0.04);">
+                <h3 style="font-family:'Poppins',sans-serif; font-size:13px; text-transform:uppercase; letter-spacing:1.5px; color:#ea580c; margin-bottom:28px; font-weight:700;">Vehicle Information</h3>
+                
+                <div style="margin-bottom:20px;">
+                    <label style="display:block; font-size:12px; color:#94a3b8; margin-bottom:6px; font-weight:600; text-transform:uppercase;">Ambulance Plate Number</label>
+                    <div style="font-size:20px; font-weight:700; color:#1e293b;">${driver.ambulanceNumber}</div>
+                </div>
+
+                <div style="margin-bottom:20px;">
+                    <label style="display:block; font-size:12px; color:#94a3b8; margin-bottom:6px; font-weight:600; text-transform:uppercase;">Emergency Unit Type</label>
+                    <div style="display:inline-flex; align-items:center; gap:8px; background:rgba(234, 88, 12, 0.1); color:#ea580c; padding:6px 14px; border-radius:12px; font-weight:700; font-size:14px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 10H6"/><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg>
+                        ${ambType}
+                    </div>
+                </div>
+
+                <div style="display:flex; gap:16px; margin-top:28px;">
+                    <div style="flex:1; background:#f8fafc; padding:16px; border-radius:16px; border:1px solid #f1f5f9; text-align:center;">
+                        <div style="font-size:11px; color:#94a3b8; text-transform:uppercase; font-weight:700; margin-bottom:4px;">Trust Score</div>
+                        <div style="font-size:18px; font-weight:800; color:#1e293b;">⭐ ${driver.rating || '5.0'}</div>
+                    </div>
+                    <div style="flex:1; background:#f8fafc; padding:16px; border-radius:16px; border:1px solid #f1f5f9; text-align:center;">
+                        <div style="font-size:11px; color:#94a3b8; text-transform:uppercase; font-weight:700; margin-bottom:4px;">Experience</div>
+                        <div style="font-size:18px; font-weight:800; color:#1e293b;">${driver.experience || 'New'}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Documents Section -->
+            <div style="grid-column: span 2; background:white; border-radius:24px; border:1px solid #e2e8f0; padding:32px; box-shadow:0 12px 30px rgba(15, 23, 42, 0.04);">
+                <h3 style="font-family:'Poppins',sans-serif; font-size:13px; text-transform:uppercase; letter-spacing:1.5px; color:#ea580c; margin-bottom:28px; font-weight:700;">Verified Documentation</h3>
+                
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:32px;">
+                    <div>
+                        <label style="display:block; font-size:11px; color:#94a3b8; margin-bottom:12px; font-weight:700; text-transform:uppercase;">Driving License / ID</label>
+                        <div style="border-radius:16px; overflow:hidden; border:1px solid #e2e8f0; height:240px; background:#f8fafc; cursor:pointer; position:relative;" class="doc-card">
+                            <img src="${driver.drivingLicensePic}" style="width:100%; height:100%; object-fit:cover; transition:all 0.4s;" alt="License">
+                            <div style="position:absolute; bottom:0; left:0; right:0; background:linear-gradient(transparent, rgba(0,0,0,0.6)); padding:20px; color:white; font-size:12px; font-weight:600; opacity:0; transition:opacity 0.3s;" class="doc-label">Click to expand document</div>
+                        </div>
+                    </div>
+                    <div>
+                        <label style="display:block; font-size:11px; color:#94a3b8; margin-bottom:12px; font-weight:700; text-transform:uppercase;">Assigned Ambulance Registration</label>
+                        <div style="border-radius:16px; overflow:hidden; border:1px solid #e2e8f0; height:240px; background:#f8fafc; cursor:pointer;" class="doc-card">
+                            <img src="${driver.ambulancePic}" style="width:100%; height:100%; object-fit:cover; transition:all 0.4s;" alt="Ambulance Photo">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <style>
+            .doc-card:hover img { transform: scale(1.05); filter: brightness(0.8); }
+            .doc-card:hover .doc-label { opacity: 1; }
+        </style>
+    `;
 }
 
 // ── Shared Utils ──
