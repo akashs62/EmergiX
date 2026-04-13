@@ -14,6 +14,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const username = localStorage.getItem('username');
 
     if (token && userEmail && authHeaderContainer) {
+        const userRole = localStorage.getItem('userRole');
+        const profileCompleted = localStorage.getItem('profileCompleted');
+
+        // Redirect incomplete patient profiles to setup (except when already on setup page)
+        if (userRole === 'patient' && profileCompleted === 'false' && !window.location.pathname.includes('patient-setup.html')) {
+            window.location.href = 'patient-setup.html';
+            return;
+        }
+
         const displayName = localStorage.getItem('userName') || userEmail.split('@')[0];
         const displayUsername = username ? `<br><small style="color: #64748b; font-size: 11px;">ID: ${username}</small>` : '';
 

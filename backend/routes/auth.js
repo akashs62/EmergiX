@@ -89,7 +89,11 @@ router.post('/signup', async (req, res) => {
             if (error) throw error;
 
             const token = signToken({ id: user.id, email: user.email, username: user.username, role: user.role, name: user.name });
-            return res.status(201).json({ status: 'success', token, user });
+            return res.status(201).json({ 
+                status: 'success', 
+                token, 
+                user: { ...user, profileCompleted: false } 
+            });
 
         } else {
             // In-memory fallback
@@ -113,7 +117,7 @@ router.post('/signup', async (req, res) => {
             const token = signToken({ id: newUser.id, email: newUser.email, role: newUser.role, name: newUser.name });
             return res.status(201).json({
                 status: 'success', token,
-                user: { id: newUser.id, name: newUser.name, email: newUser.email, role: newUser.role }
+                user: { id: newUser.id, name: newUser.name, email: newUser.email, role: newUser.role, profileCompleted: false }
             });
         }
     } catch (err) {
@@ -150,7 +154,13 @@ router.post('/signin', async (req, res) => {
             const token = signToken({ id: user.id, email: user.email, role: user.role, name: user.name });
             return res.status(200).json({
                 status: 'success', token,
-                user: { id: user.id, name: user.name, email: user.email, role: user.role }
+                user: { 
+                    id: user.id, 
+                    name: user.name, 
+                    email: user.email, 
+                    role: user.role,
+                    profileCompleted: user.profile_completed || false 
+                }
             });
         } else {
             // Demo fallback — accept any valid email + password
@@ -163,7 +173,7 @@ router.post('/signin', async (req, res) => {
             const token = signToken({ id, email: cleanEmail, role: 'patient', name });
             return res.status(200).json({
                 status: 'success', token,
-                user: { id, email: cleanEmail, role: 'patient', name }
+                user: { id, email: cleanEmail, role: 'patient', name, profileCompleted: stored ? stored.profileCompleted : false }
             });
         }
     } catch (err) {
@@ -445,7 +455,14 @@ router.post('/google', async (req, res) => {
             }
 
             const token = signToken({ id: user.id, email: user.email, role: user.role, name: user.name });
-            return res.status(200).json({ status: 'success', token, user });
+            return res.status(200).json({ 
+                status: 'success', 
+                token, 
+                user: { 
+                    ...user, 
+                    profileCompleted: user.profile_completed || false 
+                } 
+            });
         } else {
             // In-memory fallback
             let existingMemUser = memUsers.find(u => u.email === cleanEmail);
@@ -467,11 +484,76 @@ router.post('/google', async (req, res) => {
                 memUsers.push(user);
             }
             const token = signToken({ id: user.id, email: user.email, role: user.role, name: user.name });
-            return res.status(200).json({ status: 'success', token, user });
+            return res.status(200).json({ 
+                status: 'success', 
+                token, 
+                user: { 
+                    ...user, 
+                    profileCompleted: user.profileCompleted || false 
+                } 
+            });
         }
     } catch (err) {
         console.error('Google auth error:', err);
         res.status(500).json({ error: 'Server error during social login. Detail: ' + (err.message || JSON.stringify(err)) });
+    }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PUT /api/auth/profile/:id
+// ─────────────────────────────────────────────────────────────────────────────
+router.put('/profile/:id', async (req, res) => {
+    const { phone, age, gender, bloodGroup, emergencyContactName, emergencyContactPhone, address } = req.body;
+    const userId = req.params.id;
+
+    try {
+        if (isDBConnected()) {
+            const db = getSupabaseAdmin();
+            
+            const { data, error } = await db
+                .from('users')
+                .update({
+                    phone,
+                    age: age ? parseInt(age) : null,
+                    gender,
+                    blood_group: bloodGroup, // Supabase usually uses snake_case
+                    emergency_contact_name: emergencyContactName,
+                    emergency_contact_phone: emergencyContactPhone,
+                    address,
+                    profile_completed: true
+                })
+                .eq('id', userId)
+                .select()
+                .single();
+
+            if (error) throw error;
+            return res.status(200).json({ status: 'success', message: 'Profile updated successfully', user: data });
+        } else {
+            // In-memory fallback
+            const userIndex = memUsers.findIndex(u => u.id === userId);
+            if (userIndex === -1) return res.status(404).json({ error: 'User not found.' });
+
+            memUsers[userIndex] = {
+                ...memUsers[userIndex],
+                phone,
+                age: age ? parseInt(age) : null,
+                gender,
+                bloodGroup,
+                emergencyContactName,
+                emergencyContactPhone,
+                address,
+                profileCompleted: true
+            };
+
+            return res.status(200).json({ 
+                status: 'success', 
+                message: 'Profile updated successfully (In-memory)', 
+                user: memUsers[userIndex] 
+            });
+        }
+    } catch (err) {
+        console.error('Profile update error:', err);
+        res.status(500).json({ error: 'Server error updating profile.' });
     }
 });
 

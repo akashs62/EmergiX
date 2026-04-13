@@ -765,7 +765,7 @@
                     localStorage.setItem('userId', data.user.id || '');
                     localStorage.setItem('username', data.user.username || '');
                     localStorage.setItem('userEmail', data.user.email);
-                    localStorage.setItem('userRole', data.user.role || 'patient');
+                    localStorage.setItem('profileCompleted', data.user.profileCompleted !== undefined ? data.user.profileCompleted : 'true');
                     if (data.user.name) localStorage.setItem('userName', data.user.name);
                     if (data.user.fleetId) localStorage.setItem('ambulanceFleetId', data.user.fleetId);
                     if (data.user.licenseNo) localStorage.setItem('licenseNo', data.user.licenseNo);
@@ -776,6 +776,12 @@
 
                     button.style.background = r.successColor;
                     button.innerText = 'Success!';
+
+                    if (data.user.role === 'patient' && data.user.profileCompleted !== true) {
+                        setTimeout(() => { window.location.href = 'patient-setup.html'; }, 800);
+                        return;
+                    }
+
                     const redir = sessionStorage.getItem('redirectAfterLogin') || r.redirect;
                     sessionStorage.removeItem('redirectAfterLogin');
                     setTimeout(() => { window.location.href = redir; }, 800);
@@ -962,6 +968,7 @@
                                 localStorage.setItem('userEmail', data.user.email);
                                 localStorage.setItem('userRole', data.user.role || 'patient');
                                 localStorage.setItem('username', data.user.username || '');
+                                localStorage.setItem('profileCompleted', data.user.profileCompleted !== undefined ? data.user.profileCompleted : 'true');
                                 if (data.user.name) localStorage.setItem('userName', data.user.name);
                                 
                                 // Clear the hash from the URL
@@ -970,6 +977,12 @@
                                 // Redirect to dashboard or saved path
                                 const actualRole = data.user.role || role;
                                 const r = ROLES[actualRole] || ROLES['patient'];
+
+                                if (actualRole === 'patient' && data.user.profileCompleted !== true) {
+                                    window.location.href = 'patient-setup.html';
+                                    return;
+                                }
+
                                 const redir = sessionStorage.getItem('redirectAfterLogin') || r.redirect;
                                 sessionStorage.removeItem('redirectAfterLogin');
                                 window.location.href = redir;

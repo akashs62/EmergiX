@@ -40,6 +40,16 @@ const userSchema = new mongoose.Schema({
     fleetName: { type: String },
     fleetId: { type: String },
 
+    // Patient/General fields
+    phone: { type: String },
+    age: { type: Number },
+    gender: { type: String, enum: ['Male', 'Female', 'Other'] },
+    bloodGroup: { type: String },
+    emergencyContactName: { type: String },
+    emergencyContactPhone: { type: String },
+    address: { type: String },
+    profileCompleted: { type: Boolean, default: false },
+
     createdAt: { type: Date, default: Date.now }
 });
 
