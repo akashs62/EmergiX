@@ -774,38 +774,7 @@
 
             <!-- Doctor Extra Fields -->
             <div class="extra-fields" id="doctor-fields">
-                <div class="fields-row">
-                    <div class="form-group">
-                        <label for="specialization" class="form-label">Specialization</label>
-                        <div class="input-wrapper">
-                            <select id="specialization" class="form-select">
-                                <option value="" disabled selected>Select</option>
-                                <option value="emergency-medicine">Emergency Medicine</option>
-                                <option value="cardiology">Cardiology</option>
-                                <option value="neurology">Neurology</option>
-                                <option value="orthopedics">Orthopedics</option>
-                                <option value="pediatrics">Pediatrics</option>
-                                <option value="general-surgery">General Surgery</option>
-                                <option value="internal-medicine">Internal Medicine</option>
-                                <option value="anesthesiology">Anesthesiology</option>
-                                <option value="radiology">Radiology</option>
-                                <option value="other">Other</option>
-                            </select>
-                            <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
-                            </svg>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label for="license" class="form-label">License No.</label>
-                        <div class="input-wrapper">
-                            <input type="text" id="license" class="form-input" placeholder="MCI-123456" />
-                            <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" /><path d="M14 2v4a2 2 0 0 0 2 2h4" />
-                            </svg>
-                        </div>
-                    </div>
-                </div>
+                <!-- Professional details are now captured on the onboarding page -->
             </div>
 
             <!-- Ambulance Extra Fields -->
@@ -961,12 +930,7 @@
                 let payload = { name, email, password, role: currentRole };
 
                 if (currentRole === 'doctor') {
-                    const license = document.getElementById('license').value;
-                    const specialization = document.getElementById('specialization').value;
-                    if (!license.trim()) throw new Error('Please enter your Medical License Number.');
-                    if (!specialization) throw new Error('Please select your specialization.');
-                    payload.licenseNo = license;
-                    payload.specialization = specialization;
+                    // Profile details will be captured in doctor-onboarding.html
                 } else if (currentRole === 'ambulance') {
                     const fleetName = document.getElementById('fleet-name').value;
                     const fleetId = document.getElementById('fleet-id').value;
@@ -1000,9 +964,7 @@
                         sessionStorage.removeItem('redirectAfterLogin');
                         setTimeout(() => window.location.href = redir, 900);
                     } else if (currentRole === 'doctor') {
-                        if (data.user.specialization) localStorage.setItem('doctorSpecialization', data.user.specialization);
-                        if (data.user.license_no) localStorage.setItem('doctorLicense', data.user.license_no);
-                        setTimeout(() => window.location.href = 'doctor-dashboard.html', 900);
+                        setTimeout(() => window.location.href = 'doctor-onboarding.html', 900);
                     } else if (currentRole === 'ambulance') {
                         if (data.user.fleet_name) localStorage.setItem('ambulanceFleetName', data.user.fleet_name);
                         if (data.user.fleet_id) localStorage.setItem('ambulanceFleetId', data.user.fleet_id);

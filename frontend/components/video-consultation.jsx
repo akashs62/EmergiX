@@ -174,6 +174,7 @@ const VideoConsultationPage = () => {
     const [patientInfo, setPatientInfo] = useState({ name: '', phone: '', symptoms: '' });
     const [isPaying, setIsPaying] = useState(false);
     const [callTime, setCallTime] = useState(0);
+    const [feedback, setFeedback] = useState({ rating: 0, quality: '', satisfied: '', comments: '' });
 
     // WebRTC state
     const [roomId, setRoomId] = useState(null);
@@ -370,18 +371,29 @@ const VideoConsultationPage = () => {
             webrtcRef.current.endCall();
             webrtcRef.current = null;
         }
-        // Clean up video elements
+        // Clean up video elements immediately
         if (localVideoRef.current) localVideoRef.current.srcObject = null;
         if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
+
         setCallConnected(false);
-        setCallTime(0);
         setModalUI('ended');
+
+        // Transition to feedback after the "Ended" banner
         setTimeout(() => {
-            setModalUI(null);
-            setSelectedDoc(null);
-            setRoomId(null);
-            setCallStatus('');
+            setModalUI('feedback');
         }, 3500);
+    };
+
+    const handleFeedbackSubmit = () => {
+        console.log('[Consultation Feedback]', feedback);
+        // Reset everything and return to home view
+        setModalUI(null);
+        setSelectedDoc(null);
+        setRoomId(null);
+        setCallStatus('');
+        setCallTime(0);
+        setFeedback({ rating: 0, quality: '', satisfied: '', comments: '' });
+        alert('Thank you for your feedback! It helps us improve our service.');
     };
 
     const handleMuteToggle = () => {
@@ -429,6 +441,78 @@ const VideoConsultationPage = () => {
                         <div style={{ height: '100%', background: '#2EC4B6', animation: 'shrink 3.5s linear forwards', width: '100%' }}></div>
                     </div>
                     <style>{`@keyframes shrink { from { width: 100%; } to { width: 0%; } }`}</style>
+                </div>
+            )}
+
+            {/* Consultation Feedback Form */}
+            {modalUI === 'feedback' && (
+                <div className="vc-feedback-overlay">
+                    <div className="vc-feedback-card">
+                        <div className="vc-feedback-header">
+                            <h2>Session Feedback</h2>
+                            <p>How was your consultation with <strong>Dr. {selectedDoc?.name}</strong>?</p>
+                        </div>
+
+                        <div className="vc-rating-stars">
+                            {[1, 2, 3, 4, 5].map(star => (
+                                <span 
+                                    key={star} 
+                                    className={`vc-star ${feedback.rating >= star ? 'active' : ''}`}
+                                    onClick={() => setFeedback({ ...feedback, rating: star })}
+                                >
+                                    ★
+                                </span>
+                            ))}
+                        </div>
+
+                        <div className="vc-feedback-q">
+                            <label className="vc-feedback-label">How was the video & audio quality?</label>
+                            <div className="vc-options-grid">
+                                {['Excellent', 'Acceptable', 'Poor'].map(opt => (
+                                    <div 
+                                        key={opt}
+                                        className={`vc-option ${feedback.quality === opt ? 'selected' : ''}`}
+                                        onClick={() => setFeedback({ ...feedback, quality: opt })}
+                                    >
+                                        {opt}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="vc-feedback-q">
+                            <label className="vc-feedback-label">Did the doctor address all your concerns?</label>
+                            <div className="vc-options-grid">
+                                {['Yes', 'Partially', 'No'].map(opt => (
+                                    <div 
+                                        key={opt}
+                                        className={`vc-option ${feedback.satisfied === opt ? 'selected' : ''}`}
+                                        onClick={() => setFeedback({ ...feedback, satisfied: opt })}
+                                    >
+                                        {opt}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="vc-feedback-q">
+                            <label className="vc-feedback-label">Additional Comments (Optional)</label>
+                            <textarea 
+                                className="vc-feedback-textarea" 
+                                placeholder="Any suggestions to help us improve..."
+                                value={feedback.comments}
+                                onChange={e => setFeedback({ ...feedback, comments: e.target.value })}
+                            ></textarea>
+                        </div>
+
+                        <button 
+                            className="vc-submit-btn" 
+                            disabled={!feedback.rating || !feedback.quality || !feedback.satisfied}
+                            onClick={handleFeedbackSubmit}
+                        >
+                            Submit Feedback
+                        </button>
+                    </div>
                 </div>
             )}
 

@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doctor Onboarding - EmergiX</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="css/style.css" />
+    <style>
+        body {
+            background-color: #F8FAFC;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .onboarding-card {
+            background: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.05);
+            max-width: 650px;
+            width: 100%;
+            padding: 40px;
+            border: 1px solid #E2E8F0;
+        }
+
+        .header-section {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header-section h1 {
+            color: #0F172A;
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            font-family: 'Poppins', sans-serif;
+            letter-spacing: -0.5px;
+        }
+
+        .header-section p {
+            color: #64748B;
+            font-size: 15px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .form-group.full-width {
+            grid-column: span 2;
+        }
+
+        .form-label {
+            font-weight: 600;
+            color: #334155;
+            margin-bottom: 8px;
+            display: block;
+            font-size: 14px;
+        }
+
+        .form-input, .form-select {
+            width: 100%;
+            padding: 14px 16px;
+            border: 1px solid #E2E8F0;
+            border-radius: 10px;
+            font-family: 'Inter', sans-serif;
+            font-size: 15px;
+            color: #0F172A;
+            background: #fff;
+            transition: all 0.2s;
+            box-sizing: border-box;
+        }
+
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+
+        textarea.form-input {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .input-icon-wrapper {
+            position: relative;
+        }
+
+        .input-icon-wrapper .input-prefix {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #64748B;
+            font-weight: 600;
+        }
+
+        .input-icon-wrapper .form-input {
+            padding-left: 40px;
+        }
+
+        .btn-submit {
+            grid-column: span 2;
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            color: #fff;
+            padding: 16px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            width: 100%;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(79, 70, 229, 0.3);
+        }
+
+        @media (max-width: 600px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            .form-group.full-width, .btn-submit {
+                grid-column: span 1;
+            }
+            .onboarding-card {
+                padding: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="onboarding-card">
+        <div class="header-section">
+            <h1>Complete Your Profile</h1>
+            <p>Welcome, Dr. <span id="doc-name-display">...</span>! Let's set up your professional credentials.</p>
+        </div>
+
+        <form id="doc-onboard-form" class="form-grid">
+            
+            <div class="form-group full-width">
+                <label for="contact" class="form-label">Phone Number</label>
+                <div class="input-icon-wrapper">
+                    <span class="input-prefix">+91</span>
+                    <input type="tel" id="contact" class="form-input" placeholder="9876543210" required />
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="specialization" class="form-label">Specialization</label>
+                <select id="specialization" class="form-select" required>
+                    <option value="" disabled selected>Select Area</option>
+                    <option value="Emergency Medicine">Emergency Medicine</option>
+                    <option value="Cardiology">Cardiology</option>
+                    <option value="Neurology">Neurology</option>
+                    <option value="Orthopedics">Orthopedics</option>
+                    <option value="Pediatrics">Pediatrics</option>
+                    <option value="General Surgery">General Surgery</option>
+                    <option value="Internal Medicine">Internal Medicine</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="license" class="form-label">Medical License No.</label>
+                <input type="text" id="license" class="form-input" placeholder="MCI-123456" required />
+            </div>
+
+            <div class="form-group">
+                <label for="experience" class="form-label">Experience (Years)</label>
+                <input type="number" id="experience" class="form-input" placeholder="e.g. 5" min="0" max="60" required />
+            </div>
+
+            <div class="form-group">
+                <label for="fee" class="form-label">Consultation Fee</label>
+                <div class="input-icon-wrapper">
+                    <span class="input-prefix">₹</span>
+                    <input type="number" id="fee" class="form-input" placeholder="500" min="0" required />
+                </div>
+            </div>
+
+            <div class="form-group full-width">
+                <label for="bio" class="form-label">Professional Bio & Affiliations</label>
+                <textarea id="bio" class="form-input" placeholder="Briefly describe your background, hospital affiliations, and areas of expertise..." required></textarea>
+            </div>
+
+            <button type="submit" class="btn-submit" id="btn-submit">
+                Save & Continue to Dashboard
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                    <polyline points="12 5 19 12 12 19"></polyline>
+                </svg>
+            </button>
+        </form>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const userName = localStorage.getItem('userName');
+            if(userName) {
+                document.getElementById('doc-name-display').textContent = userName;
+            }
+
+            document.getElementById('doc-onboard-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                
+                const btn = document.getElementById('btn-submit');
+                btn.innerText = 'Saving Details...';
+                btn.disabled = true;
+
+                // Collect data
+                const spec = document.getElementById('specialization').value;
+                const lic = document.getElementById('license').value;
+                const exp = document.getElementById('experience').value;
+                const fee = document.getElementById('fee').value;
+
+                // Save to localStorage so it persists on the mock dashboard
+                localStorage.setItem('doctorSpecialization', spec);
+                localStorage.setItem('doctorLicense', lic);
+                localStorage.setItem('doctorExperience', exp);
+                localStorage.setItem('doctorFee', fee);
+                
+                // In a real application, you would send a PUT/POST to `/api/doctors/profile` here to update the user record.
+                
+                setTimeout(() => {
+                    window.location.href = 'doctor-dashboard.html';
+                }, 800);
+            });
+        });
+    </script>
+</body>
+</html>

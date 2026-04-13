@@ -38,7 +38,7 @@ const validateSignup = (body, role) => {
     if (!name || name.trim().length < 2) return 'Name must be at least 2 characters.';
     if (!email || !/^\S+@\S+\.\S+$/.test(email)) return 'Please provide a valid email.';
     if (!password || password.length < 6) return 'Password must be at least 6 characters.';
-    if (role === 'doctor' && (!body.licenseNo || !body.licenseNo.trim())) return 'Medical License Number is required.';
+    // License capture moved to doctor-onboarding.html
     if (role === 'ambulance' && (!body.fleetId || !body.fleetId.trim())) return 'Fleet Registration ID is required.';
     return null;
 };
