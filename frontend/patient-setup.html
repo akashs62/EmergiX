@@ -271,16 +271,16 @@
                     </select>
                 </div>
 
-                <!-- Emergency Contact Name -->
-                <div class="form-group">
-                    <label class="form-label">Emergency Contact Name</label>
-                    <input type="text" id="ecName" class="form-input" placeholder="Guardian Name" required />
+                <!-- Current Problems -->
+                <div class="form-group full-width">
+                    <label class="form-label">Problems Faced by the Patient</label>
+                    <textarea id="problems" class="form-input form-textarea" placeholder="Describe any current medical issues, symptoms, or ongoing conditions" required></textarea>
                 </div>
 
-                <!-- Emergency Contact Phone -->
-                <div class="form-group">
-                    <label class="form-label">Emergency Contact Phone</label>
-                    <input type="tel" id="ecPhone" class="form-input" placeholder="Guardian Phone" required />
+                <!-- Medical Records -->
+                <div class="form-group full-width">
+                    <label class="form-label">Past Medical Records (if any)</label>
+                    <textarea id="medicalRecords" class="form-input form-textarea" placeholder="List past surgeries, chronic illnesses, or recent hospitalizations" required></textarea>
                 </div>
 
                 <!-- Address -->
@@ -324,10 +324,18 @@
                 age: document.getElementById('age').value,
                 gender: document.getElementById('gender').value,
                 bloodGroup: document.getElementById('bloodGroup').value,
-                emergencyContactName: document.getElementById('ecName').value,
-                emergencyContactPhone: document.getElementById('ecPhone').value,
+                problems: document.getElementById('problems').value,
+                medicalRecords: document.getElementById('medicalRecords').value,
                 address: document.getElementById('address').value
             };
+
+            // Enhanced validation with alerts as requested
+            for (const key in payload) {
+                if (!payload[key] || payload[key].trim() === "") {
+                    alert(`Please fill in the required field: ${key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1')}`);
+                    return;
+                }
+            }
 
             try {
                 submitBtn.disabled = true;

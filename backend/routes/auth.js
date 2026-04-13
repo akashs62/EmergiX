@@ -503,7 +503,7 @@ router.post('/google', async (req, res) => {
 // PUT /api/auth/profile/:id
 // ─────────────────────────────────────────────────────────────────────────────
 router.put('/profile/:id', async (req, res) => {
-    const { phone, age, gender, bloodGroup, emergencyContactName, emergencyContactPhone, address } = req.body;
+    const { phone, age, gender, bloodGroup, problems, medicalRecords, address } = req.body;
     const userId = req.params.id;
 
     try {
@@ -516,9 +516,9 @@ router.put('/profile/:id', async (req, res) => {
                     phone,
                     age: age ? parseInt(age) : null,
                     gender,
-                    blood_group: bloodGroup, // Supabase usually uses snake_case
-                    emergency_contact_name: emergencyContactName,
-                    emergency_contact_phone: emergencyContactPhone,
+                    blood_group: bloodGroup,
+                    problems,
+                    medical_records: medicalRecords,
                     address,
                     profile_completed: true
                 })
@@ -539,8 +539,8 @@ router.put('/profile/:id', async (req, res) => {
                 age: age ? parseInt(age) : null,
                 gender,
                 bloodGroup,
-                emergencyContactName,
-                emergencyContactPhone,
+                problems,
+                medicalRecords,
                 address,
                 profileCompleted: true
             };

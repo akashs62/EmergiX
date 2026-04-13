@@ -45,8 +45,8 @@ const userSchema = new mongoose.Schema({
     age: { type: Number },
     gender: { type: String, enum: ['Male', 'Female', 'Other'] },
     bloodGroup: { type: String },
-    emergencyContactName: { type: String },
-    emergencyContactPhone: { type: String },
+    problems: { type: String },
+    medicalRecords: { type: String },
     address: { type: String },
     profileCompleted: { type: Boolean, default: false },
 

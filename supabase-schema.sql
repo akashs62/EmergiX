@@ -29,6 +29,15 @@ CREATE TABLE IF NOT EXISTS users (
     fleet_name TEXT,
     fleet_id TEXT,
 
+    -- Patient fields
+    phone TEXT,
+    gender TEXT,
+    blood_group TEXT,
+    problems TEXT,
+    medical_records TEXT,
+    address TEXT,
+    profile_completed BOOLEAN DEFAULT FALSE,
+
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
