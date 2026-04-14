@@ -31,9 +31,144 @@ let consultationSeconds = 0;
 let docWebRTC = null;
 let docCallConnected = false;
 let docRoomId = null;
+let docPeerState = 'new';
+let docRemoteTrackStats = 'video 0, audio 0';
 
 let activeCalls = [];
 let activeRoomsInterval = null;
+
+function getDoctorRemoteElements() {
+    return {
+        video: document.getElementById('doc-remote-video'),
+        overlay: document.getElementById('doc-waiting-overlay'),
+        placeholder: document.getElementById('doc-patient-feed-placeholder')
+    };
+}
+
+function setDoctorRemoteWaiting(isWaiting) {
+    const { overlay, placeholder } = getDoctorRemoteElements();
+    if (overlay) overlay.style.display = isWaiting ? 'flex' : 'none';
+    if (placeholder) placeholder.style.display = isWaiting ? 'flex' : 'none';
+}
+
+function updateDocMediaDebug(text) {
+    const el = document.getElementById('doc-media-debug');
+    if (el) el.textContent = text;
+}
+
+function renderDocMediaDebug() {
+    updateDocMediaDebug(`Peer: ${docPeerState} | Remote: ${docRemoteTrackStats}`);
+}
+
+function enableDoctorRemoteAudioOnGesture() {
+    const restoreAudio = () => {
+        const remote = document.getElementById('doc-remote-video');
+        if (remote) {
+            remote.muted = false;
+            remote.volume = 1;
+            remote.play().catch(() => {});
+        }
+        document.removeEventListener('pointerdown', restoreAudio, true);
+        document.removeEventListener('keydown', restoreAudio, true);
+    };
+
+    document.addEventListener('pointerdown', restoreAudio, true);
+    document.addEventListener('keydown', restoreAudio, true);
+}
+
+async function attachDoctorLocalStream(stream) {
+    const video = document.getElementById('doc-local-video');
+    const placeholder = document.getElementById('doc-local-placeholder');
+    if (!video || !stream) return;
+
+    video.srcObject = stream;
+    video.muted = true;
+    video.autoplay = true;
+    video.playsInline = true;
+
+    try { await video.play(); } catch {}
+
+    if (placeholder) placeholder.style.display = 'none';
+    video.style.display = _docVideoOff ? 'none' : 'block';
+}
+
+function syncDoctorLocalPreview() {
+    const video = document.getElementById('doc-local-video');
+    const placeholder = document.getElementById('doc-local-placeholder');
+    if (!video) return;
+
+    video.style.display = _docVideoOff ? 'none' : 'block';
+    if (placeholder) placeholder.style.display = _docVideoOff ? 'flex' : 'none';
+}
+
+async function attachDoctorRemoteStream(stream) {
+    const { video } = getDoctorRemoteElements();
+    if (!video || !stream) return;
+
+    video.autoplay = true;
+    video.playsInline = true;
+    video.muted = false;
+    video.volume = 1;
+    video.srcObject = stream;
+    setDoctorRemoteWaiting(false);
+    const vCount = stream.getVideoTracks().length;
+    const aCount = stream.getAudioTracks().length;
+    const firstVideo = stream.getVideoTracks()[0];
+    const videoState = firstVideo ? `${firstVideo.readyState}/${firstVideo.muted ? 'muted' : 'unmuted'}` : 'none';
+    docRemoteTrackStats = `video ${vCount}, audio ${aCount}, state ${videoState}`;
+    renderDocMediaDebug();
+
+    try {
+        await video.play();
+        video.muted = false;
+        video.volume = 1;
+    } catch {
+        // Autoplay fallback for strict browser policies.
+        video.muted = true;
+        try {
+            await video.play();
+            // Keep video running, then request user gesture to restore audio.
+            enableDoctorRemoteAudioOnGesture();
+        } catch {
+            console.warn('[Doctor] Remote video autoplay blocked');
+        }
+    }
+
+    stream.getVideoTracks().forEach((track) => {
+        track.onended = () => setDoctorRemoteWaiting(true);
+        track.onmute = () => setDoctorRemoteWaiting(true);
+        track.onunmute = () => setDoctorRemoteWaiting(false);
+    });
+
+    // If media tracks exist but rendering stays black, rebind stream a few times.
+    let retries = 0;
+    const healTimer = setInterval(async () => {
+        retries += 1;
+
+        if (!consultationActive || video.srcObject !== stream) {
+            clearInterval(healTimer);
+            return;
+        }
+
+        if (video.videoWidth > 0 && video.videoHeight > 0) {
+            docRemoteTrackStats = `video ${vCount}, audio ${aCount}, frame ${video.videoWidth}x${video.videoHeight}`;
+            renderDocMediaDebug();
+            clearInterval(healTimer);
+            return;
+        }
+
+        if (retries <= 6) {
+            video.srcObject = null;
+            video.srcObject = stream;
+            try { await video.play(); } catch {}
+            docRemoteTrackStats = `video ${vCount}, audio ${aCount}, rendering retry ${retries}`;
+            renderDocMediaDebug();
+            return;
+        }
+
+        clearInterval(healTimer);
+    }, 1000);
+}
 
 // ── WebRTC State ──
 
@@ -57,6 +192,7 @@ class DoctorWebRTC {
         this.pc = null;
         this.ws = null;
         this.localStream = null;
+        this.remoteStream = new MediaStream();
         this._pendingCandidates = [];
         this._isMuted = false;
         this._isVideoOff = false;
@@ -89,11 +225,21 @@ class DoctorWebRTC {
                 this.ws.send(JSON.stringify({ type: 'ice-candidate', candidate }));
             }
         };
-        pc.ontrack = ({ streams }) => {
-            if (streams && streams[0]) this.onRemoteStream(streams[0]);
+        pc.ontrack = ({ track, streams }) => {
+            // Browser compatibility: some engines provide tracks without streams[0].
+            if (streams && streams[0]) {
+                this.remoteStream = streams[0];
+                this.onRemoteStream(this.remoteStream);
+                return;
+            }
+
+            this.remoteStream.addTrack(track);
+            this.onRemoteStream(this.remoteStream);
         };
         pc.onconnectionstatechange = () => {
             const s = pc.connectionState;
+            docPeerState = s;
+            renderDocMediaDebug();
             if (s === 'connected') this.onStatusChange('connected');
             if (s === 'disconnected' || s === 'failed') {
                 this.onStatusChange('disconnected');
@@ -112,7 +258,7 @@ class DoctorWebRTC {
                 // Both peers in room — doctor sends offer
                 this.onStatusChange('Patient ready — starting call...');
                 if (!this.pc) this._createPeerConnection();
-                const offer = await this.pc.createOffer();
+                const offer = await this.pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
                 await this.pc.setLocalDescription(offer);
                 this.ws.send(JSON.stringify({ type: 'offer', sdp: this.pc.localDescription }));
                 break;
@@ -176,6 +322,10 @@ class DoctorWebRTC {
         if (this.pc) { this.pc.close(); this.pc = null; }
         if (this.ws) { this.ws.close(); this.ws = null; }
         if (this.localStream) { this.localStream.getTracks().forEach(t => t.stop()); this.localStream = null; }
+        if (this.remoteStream) {
+            this.remoteStream.getTracks().forEach(t => t.stop());
+            this.remoteStream = new MediaStream();
+        }
     }
 }
 
@@ -631,7 +781,11 @@ async function launchDoctorCall(roomId, patientName) {
     consultationActive = true;
     consultationSeconds = 0;
     docCallConnected = false;
+    docPeerState = 'connecting';
+    docRemoteTrackStats = 'video 0, audio 0';
     renderConsultations();
+    setDoctorRemoteWaiting(true);
+    renderDocMediaDebug();
     setDoctorStatus('Busy');
 
     // Start WebRTC
@@ -639,12 +793,10 @@ async function launchDoctorCall(roomId, patientName) {
         docWebRTC = new DoctorWebRTC({
             roomId,
             onLocalStream: (stream) => {
-                const vid = document.getElementById('doc-local-video');
-                if (vid) { vid.srcObject = stream; vid.play().catch(()=>{}); }
+                attachDoctorLocalStream(stream);
             },
             onRemoteStream: (stream) => {
-                const vid = document.getElementById('doc-remote-video');
-                if (vid) { vid.srcObject = stream; vid.play().catch(()=>{}); }
+                attachDoctorRemoteStream(stream);
                 docCallConnected = true;
                 updateDocCallStatus('Call connected — Live');
                 startDocTimer();
@@ -657,6 +809,15 @@ async function launchDoctorCall(roomId, patientName) {
             }
         });
         await docWebRTC.start();
+
+        // If connected but no remote video track arrives, surface it clearly.
+        setTimeout(() => {
+            if (!consultationActive) return;
+            if (!docCallConnected && docPeerState === 'connected') {
+                updateDocCallStatus('Connected, but no patient media track received');
+                showToast('Patient video not received. Ask patient to re-enable camera and rejoin.', 'warning');
+            }
+        }, 8000);
     } catch(err) {
         console.error('Doctor WebRTC failed:', err);
         showToast('Camera/mic access denied. Check permissions.', 'danger');
@@ -694,7 +855,7 @@ function renderActiveConsultation() {
     const patientName = window._currentConsultPatient || 'Patient';
 
     panel.innerHTML = `
-    <div style="position:fixed;top:0;left:0;right:0;bottom:0;background:#0a0f1e;z-index:9999;display:flex;flex-direction:column;font-family:'Inter',sans-serif;">
+    <div style="position:relative;width:100%;height:calc(100vh - 260px);min-height:620px;background:#0a0f1e;z-index:20;display:flex;flex-direction:column;font-family:'Inter',sans-serif;border-radius:18px;overflow:hidden;">
         <!-- Header -->
         <div style="background:rgba(10,15,30,0.95);padding:14px 24px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,0.08);">
             <div style="display:flex;align-items:center;gap:14px;">
@@ -715,15 +876,17 @@ function renderActiveConsultation() {
         <div style="background:rgba(79,70,229,0.12);border-bottom:1px solid rgba(79,70,229,0.2);padding:8px 24px;display:flex;align-items:center;gap:10px;color:#a78bfa;font-size:0.82rem;">
             <span>Room:</span>
             <code style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);padding:2px 10px;border-radius:5px;font-family:monospace;color:#c4b5fd;">${docRoomId}</code>
+            <span id="doc-media-debug" style="margin-left:auto;color:#93c5fd;font-size:0.78rem;">Peer: connecting | Remote: video 0, audio 0</span>
         </div>
         <!-- Call Body -->
-        <div style="flex:1;display:flex;padding:14px;gap:14px;overflow:hidden;min-height:0;">
+        <div style="flex:1;display:flex;padding:14px;gap:14px;overflow:hidden;min-height:420px;">
             <!-- Main Video -->
-            <div style="flex:3;background:#111827;border-radius:20px;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;box-shadow:0 20px 60px rgba(0,0,0,0.6);">
+            <div style="flex:3;background:#111827;border-radius:20px;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;box-shadow:0 20px 60px rgba(0,0,0,0.6);min-height:380px;">
                 <!-- Remote (Patient) video -->
-                <video id="doc-remote-video" autoplay playsinline style="width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;border-radius:20px;display:block;"></video>
+                <video id="doc-remote-video" autoplay playsinline style="width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;border-radius:20px;display:block;z-index:5;background:#000;transform:translateZ(0);"></video>
+                <div id="doc-patient-feed-placeholder" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:1;background:linear-gradient(180deg, #0f172a, #111827);color:#94a3b8;font-size:0.95rem;letter-spacing:0.02em;">Patient feed will appear here</div>
                 <!-- Waiting overlay -->
-                <div id="doc-waiting-overlay" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:2;">
+                <div id="doc-waiting-overlay" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:2;background:linear-gradient(180deg, rgba(15, 23, 42, 0.35), rgba(15, 23, 42, 0.6));">
                     <div style="position:absolute;width:110px;height:110px;border-radius:50%;border:2px solid rgba(79,70,229,0.4);animation:pulse-d 2s ease infinite;"></div>
                     <div style="width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,#1e3a5f,#1d4ed8);display:flex;align-items:center;justify-content:center;font-size:2.5rem;font-weight:700;color:white;z-index:2;">${patientName.charAt(0).toUpperCase()}</div>
                     <p style="color:#94a3b8;font-size:1rem;z-index:2;">Waiting for patient to connect...</p>
@@ -731,8 +894,12 @@ function renderActiveConsultation() {
                 <!-- Patient name label -->
                 <div style="position:absolute;bottom:16px;left:16px;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);color:white;font-size:0.75rem;padding:3px 10px;border-radius:6px;z-index:3;">${patientName} (Patient)</div>
                 <!-- Local PiP -->
-                <div style="position:absolute;bottom:20px;right:20px;width:200px;height:136px;background:#1e293b;border-radius:14px;border:2px solid rgba(255,255,255,0.25);overflow:hidden;z-index:4;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(0,0,0,0.5);">
+                <div style="position:absolute;bottom:20px;right:20px;width:220px;height:146px;background:#1e293b;border-radius:14px;border:2px solid rgba(255,255,255,0.25);overflow:hidden;z-index:8;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(0,0,0,0.5);">
                     <video id="doc-local-video" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover;"></video>
+                    <div id="doc-local-placeholder" style="position:absolute;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;gap:6px;background:#111827;color:#cbd5e1;font-size:0.78rem;">
+                        <span style="font-size:1.4rem;">📷</span>
+                        <span>Camera Off</span>
+                    </div>
                     <div style="position:absolute;bottom:6px;left:8px;background:rgba(0,0,0,0.6);color:white;font-size:0.7rem;padding:2px 8px;border-radius:5px;">You (Dr.)</div>
                 </div>
             </div>
@@ -791,6 +958,7 @@ let _docVideoOff = false;
 function docToggleVideo() {
     _docVideoOff = !_docVideoOff;
     if (docWebRTC) docWebRTC.toggleVideo(_docVideoOff);
+    syncDoctorLocalPreview();
     const btn = document.getElementById('doc-video-btn');
     if (btn) btn.style.background = _docVideoOff ? '#1d4ed8' : '#1e293b';
     showToast(_docVideoOff ? 'Camera off' : 'Camera on', 'info');

@@ -21,7 +21,7 @@ EmergiX is a cutting-edge emergency care coordination platform. It provides rapi
 2. **Start the local server**: 
    Since EmergiX utilizes external API requests and React `.jsx` via Babel, it must be accessed on a local server (e.g., using `serve` or `live-server`).
    ```bash
-   npx serve . -p 3000
+   npx serve . -p 3000 or npm start
    ```
 3. Navigate to `http://localhost:3000` via your browser.
 
