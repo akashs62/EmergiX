@@ -17,19 +17,32 @@ EmergiX is a cutting-edge emergency care coordination platform. It provides rapi
 - Node.js & Express (API Mock Authentication Flow)
 
 ## Getting Started ⚙️
+Run all the commands in Command Prompt Terminal(cmd)
+
 1. **Clone the repository.**
-2. **Start the local server**: 
-   Since EmergiX utilizes external API requests and React `.jsx` via Babel, it must be accessed on a local server (e.g., using `serve` or `live-server`).
+   
    ```bash
-   npx serve . -p 3000 or npm start
+   git clone https://github.com/akashs62/EmergiX.git
+
+2. **Install dependencies**:
+   ```bash
+   npm install
    ```
-3. Navigate to `http://localhost:3000` via your browser.
+
+3. **Start the app**:
+   ```bash
+   npm start
+   ```
+4. Open `http://localhost:3000` in your browser.
+5. (Optional) Check backend health at `http://localhost:3000/api/health`.
+
+Note: the Express backend serves the frontend, so a separate `npx serve` process is not required.
 
 ## File Structure 📁
-- `index.html` / `app.js` / `style.css` - Main Landing Page & interactions.
-- `ambulance-dispatch.html/jsx/css` - Fleet routing & live Leaflet map simulation.
-- `video-consultation.html/jsx/css` - Triage call and mock consultation flow.
-- `server.js` - Lightweight Express backend for auth testing (`signup.html` / `signin.html`).
+- `frontend/` - Static pages, styles, plain JS, and Babel JSX components.
+- `backend/server.js` - Express API + static file hosting + WebSocket signaling.
+- `backend/routes/` - Feature routes (`auth`, `doctors`, `rooms`, `triage`, etc.).
+- `backend/config/` - DB and environment config helpers.
 
 ## License 📄
 MIT License
