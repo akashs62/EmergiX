@@ -4,12 +4,15 @@
  */
 
 const EmergiXConfig = (() => {
-    // Determine the base URL. Forces localhost:3000 as requested.
-    const API_BASE_URL = 'http://localhost:3000';
+    // Determine if we're running locally or on Vercel
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    
+    // Set API_BASE_URL dynamically based on environment
+    const API_BASE_URL = isLocalhost ? 'http://localhost:3000' : window.location.origin;
 
     return {
         API_BASE_URL,
-        isDevelopment: true
+        isDevelopment: isLocalhost
     };
 })();
 
