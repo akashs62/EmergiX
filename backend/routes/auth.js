@@ -503,7 +503,7 @@ router.post('/google', async (req, res) => {
 // PUT /api/auth/profile/:id
 // ─────────────────────────────────────────────────────────────────────────────
 router.put('/profile/:id', async (req, res) => {
-    const { phone, age, gender, bloodGroup, problems, medicalRecords, address } = req.body;
+    const { phone, age, gender, bloodGroup, problems, medicalRecords } = req.body;
     const userId = req.params.id;
 
     try {
@@ -519,7 +519,6 @@ router.put('/profile/:id', async (req, res) => {
                     blood_group: bloodGroup,
                     problems,
                     medical_records: medicalRecords,
-                    address,
                     profile_completed: true
                 })
                 .eq('id', userId)
@@ -541,7 +540,6 @@ router.put('/profile/:id', async (req, res) => {
                 bloodGroup,
                 problems,
                 medicalRecords,
-                address,
                 profileCompleted: true
             };
 

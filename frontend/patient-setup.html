@@ -283,11 +283,6 @@
                     <textarea id="medicalRecords" class="form-input form-textarea" placeholder="List past surgeries, chronic illnesses, or recent hospitalizations" required></textarea>
                 </div>
 
-                <!-- Address -->
-                <div class="form-group full-width">
-                    <label class="form-label">Home Address</label>
-                    <textarea id="address" class="form-input form-textarea" placeholder="Street, City, Pincode" required></textarea>
-                </div>
             </div>
 
             <button type="submit" id="submit-btn" class="setup-btn">Complete Setup</button>
@@ -325,8 +320,7 @@
                 gender: document.getElementById('gender').value,
                 bloodGroup: document.getElementById('bloodGroup').value,
                 problems: document.getElementById('problems').value,
-                medicalRecords: document.getElementById('medicalRecords').value,
-                address: document.getElementById('address').value
+                medicalRecords: document.getElementById('medicalRecords').value
             };
 
             // Enhanced validation with alerts as requested
