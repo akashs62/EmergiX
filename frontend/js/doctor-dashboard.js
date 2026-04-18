@@ -957,7 +957,6 @@ function sendDocChat() {
     input.value = '';
 }
 
-let _docMuted = false;
 function docToggleMute() {
     _docMuted = !_docMuted;
     if (docWebRTC) docWebRTC.toggleMute(_docMuted);
@@ -966,7 +965,6 @@ function docToggleMute() {
     showToast(_docMuted ? 'Microphone muted' : 'Microphone on', 'info');
 }
 
-let _docVideoOff = false;
 function docToggleVideo() {
     _docVideoOff = !_docVideoOff;
     if (docWebRTC) docWebRTC.toggleVideo(_docVideoOff);
