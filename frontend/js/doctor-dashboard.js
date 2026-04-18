@@ -36,6 +36,8 @@ let docCallConnected = false;
 let docRoomId = null;
 let docPeerState = 'new';
 let docRemoteTrackStats = 'video 0, audio 0';
+let _docVideoOff = false;
+let _docMuted = false;
 
 let activeCalls = [];
 let activeRoomsInterval = null;
