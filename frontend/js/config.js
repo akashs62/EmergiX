@@ -10,14 +10,8 @@ const EmergiXConfig = (() => {
     // Set API_BASE_URL dynamically based on environment
     const API_BASE_URL = isLocalhost ? 'http://localhost:3000' : window.location.origin;
 
-    // Supabase Configuration
-    const SUPABASE_URL = 'https://jukrbkgjykaqxgsdixnf.supabase.co';
-    const SUPABASE_ANON_KEY = 'sb_publishable_evHc2z1W1wImkd4PkFnmGg_bE6Kz2gf';
-
     return {
         API_BASE_URL,
-        SUPABASE_URL,
-        SUPABASE_ANON_KEY,
         isDevelopment: isLocalhost
     };
 })();
