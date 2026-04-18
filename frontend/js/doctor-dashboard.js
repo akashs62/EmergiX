@@ -180,6 +180,10 @@ const ICE_CONFIG = {
     ]
 };
 
+const supabaseUrl = 'https://jukrbkgjykaqxgsdixnf.supabase.co';
+const anonKey = 'sb_publishable_evHc2z1W1wImkd4PkFnmGg_bE6Kz2gf';
+const supabase = window.supabase.createClient(supabaseUrl, anonKey);
+
 // ─── Doctor WebRTC Manager ───────────────────────────────────────────────────
 class DoctorWebRTC {
     constructor({ roomId, onLocalStream, onRemoteStream, onStatusChange, onChatMessage, onPeerLeft }) {
@@ -190,7 +194,7 @@ class DoctorWebRTC {
         this.onChatMessage = onChatMessage;
         this.onPeerLeft = onPeerLeft;
         this.pc = null;
-        this.ws = null;
+        this.channel = null;
         this.localStream = null;
         this.remoteStream = new MediaStream();
         this._pendingCandidates = [];
@@ -205,15 +209,24 @@ class DoctorWebRTC {
         this.onLocalStream(this.localStream);
         this.onStatusChange('Connecting to room...');
 
-        const wsBase = API_Base.replace(/^http/, 'ws');
-        this.ws = new WebSocket(`${wsBase}/ws?roomId=${this.roomId}&role=doctor`);
-        this.ws.onopen = () => {
-            console.log('[Doctor] WS connected');
-            this.onStatusChange('Joined room — waiting for patient...');
-        };
-        this.ws.onmessage = (e) => this._handleSignal(JSON.parse(e.data));
-        this.ws.onerror = (e) => console.error('[Doctor] WS error', e);
-        this.ws.onclose = () => console.log('[Doctor] WS closed');
+        this.channel = supabase.channel(`room:${this.roomId}`);
+        
+        this.channel.on('broadcast', { event: 'signal' }, payload => {
+            this._handleSignal(payload.payload);
+        });
+
+        this.channel.subscribe((status) => {
+            console.log('[Doctor] Supabase Channel status:', status);
+            if (status === 'SUBSCRIBED') {
+                this.onStatusChange('Joined room — waiting for patient...');
+                // Notify that the doctor is ready for the patient to answer or join
+                this.channel.send({
+                    type: 'broadcast',
+                    event: 'signal',
+                    payload: { type: 'joined', role: 'doctor' }
+                });
+            }
+        });
     }
 
     _createPeerConnection() {
@@ -221,18 +234,20 @@ class DoctorWebRTC {
         this.pc = pc;
         this.localStream.getTracks().forEach(t => pc.addTrack(t, this.localStream));
         pc.onicecandidate = ({ candidate }) => {
-            if (candidate && this.ws.readyState === WebSocket.OPEN) {
-                this.ws.send(JSON.stringify({ type: 'ice-candidate', candidate }));
+            if (candidate && this.channel) {
+                this.channel.send({
+                    type: 'broadcast',
+                    event: 'signal',
+                    payload: { type: 'ice-candidate', candidate }
+                });
             }
         };
         pc.ontrack = ({ track, streams }) => {
-            // Browser compatibility: some engines provide tracks without streams[0].
             if (streams && streams[0]) {
                 this.remoteStream = streams[0];
                 this.onRemoteStream(this.remoteStream);
                 return;
             }
-
             this.remoteStream.addTrack(track);
             this.onRemoteStream(this.remoteStream);
         };
@@ -252,15 +267,21 @@ class DoctorWebRTC {
     async _handleSignal(msg) {
         switch (msg.type) {
             case 'joined':
-                console.log('[Doctor] Joined room:', this.roomId);
+                console.log('[Doctor] Peer joined room:', msg.role);
                 break;
-            case 'ready':
-                // Both peers in room — doctor sends offer
-                this.onStatusChange('Patient ready — starting call...');
-                if (!this.pc) this._createPeerConnection();
-                const offer = await this.pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
-                await this.pc.setLocalDescription(offer);
-                this.ws.send(JSON.stringify({ type: 'offer', sdp: this.pc.localDescription }));
+            case 'peer-joined':
+                if (msg.role === 'patient') {
+                    // Both peers in room, patient is ready — doctor sends offer
+                    this.onStatusChange('Patient ready — starting call...');
+                    if (!this.pc) this._createPeerConnection();
+                    const offer = await this.pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
+                    await this.pc.setLocalDescription(offer);
+                    this.channel.send({
+                        type: 'broadcast',
+                        event: 'signal',
+                        payload: { type: 'offer', sdp: this.pc.localDescription }
+                    });
+                }
                 break;
             case 'answer':
                 if (this.pc) {
@@ -292,35 +313,53 @@ class DoctorWebRTC {
     }
 
     sendChat(text) {
-        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-            this.ws.send(JSON.stringify({ type: 'chat', text }));
+        if (this.channel) {
+            this.channel.send({
+                type: 'broadcast',
+                event: 'signal',
+                payload: { type: 'chat', text }
+            });
         }
     }
 
     toggleMute(muted) {
         this._isMuted = muted;
         if (this.localStream) this.localStream.getAudioTracks().forEach(t => { t.enabled = !muted; });
-        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-            this.ws.send(JSON.stringify({ type: 'toggle-audio', muted }));
+        if (this.channel) {
+            this.channel.send({
+                type: 'broadcast',
+                event: 'signal',
+                payload: { type: 'toggle-audio', muted }
+            });
         }
     }
 
     toggleVideo(videoOff) {
         this._isVideoOff = videoOff;
         if (this.localStream) this.localStream.getVideoTracks().forEach(t => { t.enabled = !videoOff; });
-        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-            this.ws.send(JSON.stringify({ type: 'toggle-video', videoOff }));
+        if (this.channel) {
+            this.channel.send({
+                type: 'broadcast',
+                event: 'signal',
+                payload: { type: 'toggle-video', videoOff }
+            });
         }
     }
 
     endCall() {
-        if (this.ws && this.ws.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify({ type: 'end-call' }));
+        if (this.channel) {
+            this.channel.send({
+                type: 'broadcast',
+                event: 'signal',
+                payload: { type: 'end-call' }
+            });
+        }
         this.destroy();
     }
 
     destroy() {
         if (this.pc) { this.pc.close(); this.pc = null; }
-        if (this.ws) { this.ws.close(); this.ws = null; }
+        if (this.channel) { supabase.removeChannel(this.channel); this.channel = null; }
         if (this.localStream) { this.localStream.getTracks().forEach(t => t.stop()); this.localStream = null; }
         if (this.remoteStream) {
             this.remoteStream.getTracks().forEach(t => t.stop());
