@@ -33,9 +33,11 @@ class PatientWebRTC {
         this.localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         this.onStatusChange('Waiting for doctor to join...');
 
-        // Set up WebSocket
-        const wsBase = API_Base.replace(/^http/, 'ws');
-        this.ws = new WebSocket(`${wsBase}/ws?roomId=${this.roomId}&role=patient`);
+        // Set up WebSocket accurately
+        let wsBase = API_Base.replace(/^https/, 'wss').replace(/^http/, 'ws');
+        const wsUrl = `${wsBase}/ws?roomId=${this.roomId}&role=patient`;
+        console.log('[Patient] Connecting to WS:', wsUrl);
+        this.ws = new WebSocket(wsUrl);
 
         this.ws.onopen = () => console.log('[Patient] WS connected');
         this.ws.onmessage = (e) => this._handleSignal(JSON.parse(e.data));
@@ -697,6 +699,11 @@ const VideoConsultationPage = () => {
                             </div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                            {roomId && (
+                                <button onClick={copyRoomId} className="vc-btn" style={{ padding: '4px 10px', fontSize: '12px', height: 'auto', background: '#F1F5F9', color: '#475569', border: '1px solid #CBD5E1', cursor: 'pointer' }} title="Copy Room ID">
+                                    Copy Room ID
+                                </button>
+                            )}
                             <div className="vc-call-status-badge">{callStatus || 'Connecting...'}</div>
                             {callConnected && (
                                 <div className="vc-timer">

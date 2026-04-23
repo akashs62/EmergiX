@@ -45,7 +45,7 @@ router.get('/', async (req, res) => {
                 ambulances: ambCount || 0,
                 cases: (bookingCount || 0) + (appointCount || 0),
                 avgRating: parseFloat(avgRating.toFixed(1)),
-                cities: 12 // Hardcoded for now as it's not in DB
+                cities: 1 
             }
         });
     } catch (err) {

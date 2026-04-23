@@ -205,8 +205,10 @@ class DoctorWebRTC {
         this.onLocalStream(this.localStream);
         this.onStatusChange('Connecting to room...');
 
-        const wsBase = API_Base.replace(/^http/, 'ws');
-        this.ws = new WebSocket(`${wsBase}/ws?roomId=${this.roomId}&role=doctor`);
+        const wsBase = API_Base.replace(/^https/, 'wss').replace(/^http/, 'ws');
+        const wsUrl = `${wsBase}/ws?roomId=${this.roomId}&role=doctor`;
+        console.log('[Doctor] Connecting to WS:', wsUrl);
+        this.ws = new WebSocket(wsUrl);
         this.ws.onopen = () => {
             console.log('[Doctor] WS connected');
             this.onStatusChange('Joined room — waiting for patient...');
