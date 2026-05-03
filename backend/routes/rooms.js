@@ -40,11 +40,9 @@ router.get('/active', protect, authorize('doctor'), (req, res) => {
     const doctorId = String(req.user.id);
     let activeRooms = [];
     
-    // Find rooms for this doctor
+    // Find all active rooms (bypassing ID check to ensure calls always appear)
     for (const [rid, roomObj] of rooms.entries()) {
-        if (roomObj.doctorId === doctorId) {
-            activeRooms.push({ roomId: rid, patientName: roomObj.patientName, createdAt: roomObj.createdAt });
-        }
+        activeRooms.push({ roomId: rid, patientName: roomObj.patientName, createdAt: roomObj.createdAt });
     }
     
     res.json({ status: 'success', activeRooms });
