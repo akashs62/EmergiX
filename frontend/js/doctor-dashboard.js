@@ -1072,12 +1072,12 @@ function addAllDaySlot() {
     const div = document.createElement('div');
     div.className = 'slot-edit-row';
     div.style.cssText = 'display:flex;gap:10px;margin-bottom:10px;align-items:center;';
-    div.innerHTML = \`
+    div.innerHTML = `
         <input type="text" class="slot-time" value="All Day" placeholder="e.g. 9:00 AM - 12:00 PM" style="flex:2;padding:8px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;">
         <input type="text" class="slot-label" value="Consultations" placeholder="e.g. OPD" style="flex:1;padding:8px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;">
         <label style="display:flex;align-items:center;font-size:12px;gap:4px;"><input type="checkbox" class="slot-active" checked> Active</label>
         <button onclick="this.parentElement.remove()" style="background:none;border:none;color:#ef4444;font-size:16px;cursor:pointer;line-height:1;">✕</button>
-    \`;
+    `;
     container.appendChild(div);
 }
 
@@ -1136,7 +1136,6 @@ function renderRecords(filter = '') {
     const panel = document.getElementById('view-records');
     
     // UI Render logic omitted for brevity (unchanged)...
-    const panel = document.getElementById('view-records');
     panel.innerHTML = `
         <h2 style="font-family:'Poppins',sans-serif;font-size:22px;font-weight:700;margin-bottom:20px;">Clinical Records</h2>
         <div style="padding:40px;text-align:center;color:#94a3b8;background:#fff;border-radius:16px;border:1px solid #e2e8f0;">
