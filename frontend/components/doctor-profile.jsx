@@ -89,16 +89,42 @@ const DoctorProfilePage = () => {
                 description: `Instant consultation with ${doctor.name}`,
                 order_id: result.order.id,
                 prefill: { name: instantPatient.name, contact: instantPatient.phone },
-                handler: function (response) {
-                    console.log('Payment success:', response);
-                    setShowPayModal(false);
-                    setTimeout(() => setCallActive(true), 400);
+                handler: async function (response) {
+                    try {
+                        console.log('Payment success, verifying signature...');
+                        if (result.order && result.order.isMock) {
+                            setShowPayModal(false);
+                            setTimeout(() => setCallActive(true), 400);
+                            return;
+                        }
+                        
+                        const verifyRes = await fetch(`${API_Base}/api/razorpay/verify-payment`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                razorpay_order_id: response.razorpay_order_id,
+                                razorpay_payment_id: response.razorpay_payment_id,
+                                razorpay_signature: response.razorpay_signature
+                            })
+                        });
+                        
+                        const verifyData = await verifyRes.json();
+                        if (!verifyRes.ok) throw new Error(verifyData.error || 'Payment verification failed');
+                        
+                        setShowPayModal(false);
+                        setTimeout(() => setCallActive(true), 400);
+                    } catch (err) {
+                        console.error('Verification Error:', err);
+                        alert('Payment verification failed. Please contact support.');
+                    }
                 },
                 theme: { color: '#2B7FFF' }
             };
 
             const rzp = new window.Razorpay(options);
-            rzp.on('payment.failed', () => alert('Payment failed. Please try again.'));
+            rzp.on('payment.failed', (response) => {
+                alert('Payment failed: ' + response.error.description);
+            });
             rzp.open();
         } catch (err) {
             console.error('Payment error:', err);

@@ -601,10 +601,33 @@ const PaymentSelectionScreen = ({ onBack, onConfirm }) => {
                     name: 'EmergiX Dispatch',
                     description: 'Ambulance Booking Fee',
                     order_id: result.order.id,
-                    handler: function (response) {
-                        // Payment successful
-                        console.log("Payment Success:", response);
-                        onConfirm('razorpay');
+                    handler: async function (response) {
+                        try {
+                            console.log("Payment Success, verifying signature...");
+                            if (result.order && result.order.isMock) {
+                                onConfirm('razorpay');
+                                return;
+                            }
+
+                            const verifyRes = await fetch(`${API_Base}/api/razorpay/verify-payment`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    razorpay_order_id: response.razorpay_order_id,
+                                    razorpay_payment_id: response.razorpay_payment_id,
+                                    razorpay_signature: response.razorpay_signature
+                                })
+                            });
+                            
+                            const verifyData = await verifyRes.json();
+                            if (!verifyRes.ok) throw new Error(verifyData.error || 'Payment verification failed');
+                            
+                            onConfirm('razorpay');
+                        } catch (err) {
+                            console.error('Verification Error:', err);
+                            alert('Payment verification failed. Please contact support or try Cash on Delivery.');
+                            setIsProcessing(false);
+                        }
                     },
                     theme: { color: '#0284C7' }
                 };

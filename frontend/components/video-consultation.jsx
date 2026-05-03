@@ -309,13 +309,46 @@ const VideoConsultationPage = () => {
                 description: `Consultation with ${selectedDoc.name}`,
                 order_id: result.order.id,
                 prefill: { name: patientInfo.name, contact: patientInfo.phone },
-                handler: () => onPaymentSuccess(),
+                handler: async (response) => {
+                    try {
+                        setIsPaying(true);
+                        // If it's a mock order, skip verification API call
+                        if (result.order && result.order.isMock) {
+                            await onPaymentSuccess();
+                            return;
+                        }
+
+                        // Verify Signature via Backend
+                        const verifyRes = await fetch(`${API_Base}/api/razorpay/verify-payment`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                razorpay_order_id: response.razorpay_order_id,
+                                razorpay_payment_id: response.razorpay_payment_id,
+                                razorpay_signature: response.razorpay_signature
+                            })
+                        });
+                        
+                        const verifyData = await verifyRes.json();
+                        if (!verifyRes.ok) throw new Error(verifyData.error || 'Payment verification failed');
+                        
+                        // Verification successful -> proceed
+                        await onPaymentSuccess();
+                    } catch (err) {
+                        console.error('Verification Error:', err);
+                        alert('Payment verification failed. Please contact support.');
+                    } finally {
+                        setIsPaying(false);
+                    }
+                },
                 theme: { color: '#0284C7' }
             };
 
             if (window.Razorpay) {
                 const rzp = new window.Razorpay(options);
-                rzp.on('payment.failed', () => alert('Payment failed. Please try again.'));
+                rzp.on('payment.failed', (response) => {
+                    alert('Payment failed: ' + response.error.description);
+                });
                 rzp.open();
             } else {
                 alert('Razorpay SDK failed to load.');
