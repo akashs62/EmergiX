@@ -97,27 +97,7 @@
                 <p class="hero-subtitle">
                     Dispatch emergency ambulances, connect with specialists, and coordinate care from the first alert to hospital handoff.
                 </p>
-                <div class="hero-ctas">
-                    <button class="btn-emergency-hero" id="btnHeroEmergency">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                            <path
-                                d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81 19.79 19.79 0 01.01 1.18 2 2 0 012 0h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 13.92z"
-                                stroke="currentColor" stroke-width="2" />
-                        </svg>
-                        Request Emergency
-                    </button>
-                    <a href="video-consultation.html" class="btn-ghost-hero">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                            <rect x="2" y="3" width="20" height="14" rx="2" stroke="currentColor" stroke-width="2" />
-                            <path d="M8 21h8M12 17v4" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-                        </svg>
-                        Start Doctor Consult
-                    </a>
-                </div>
-                <div class="hero-quick-actions" aria-label="Platform capabilities">
-                    <span>Dispatch triage in under 60 seconds</span>
-                    <span>Live tracking with family-safe updates</span>
-                </div>
+
                 <div class="hero-trust-grid" aria-label="Operational highlights">
                     <div class="hero-trust-card">
                         <span class="hero-trust-eyebrow">Coordination</span>
@@ -140,6 +120,54 @@
 
             <!-- Hero visual: floating info cards -->
             <div class="hero-visual" aria-hidden="true">
+                <div class="hero-actions-container">
+                    <div class="hero-buttons-row">
+                        <button class="btn-emergency-hero" id="btnHeroEmergency">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                <path
+                                    d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81 19.79 19.79 0 01.01 1.18 2 2 0 012 0h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 13.92z"
+                                    stroke="currentColor" stroke-width="2" />
+                            </svg>
+                            <div class="btn-text">
+                                <span>Request</span>
+                                <span>Emergency</span>
+                            </div>
+                        </button>
+                        
+                        <div class="hero-active-status">
+                            <div class="status-num-wrap">
+                                <span class="pulse-dot-green"></span>
+                                <span class="status-num" id="heroActiveAmbulances">14</span>
+                            </div>
+                            <div class="status-text-wrap">
+                                <span>Ambulances</span>
+                                <span>Active</span>
+                            </div>
+                        </div>
+
+                        <a href="video-consultation.html" class="btn-consult-hero">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                <rect x="2" y="3" width="20" height="14" rx="2" stroke="currentColor" stroke-width="2" />
+                                <path d="M8 21h8M12 17v4" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                            </svg>
+                            <div class="btn-text">
+                                <span>Start Doctor</span>
+                                <span>Consult</span>
+                            </div>
+                        </a>
+
+                        <div class="hero-active-status">
+                            <div class="status-num-wrap">
+                                <span class="pulse-dot-green"></span>
+                                <span class="status-num" id="heroActiveDoctors">3</span>
+                            </div>
+                            <div class="status-text-wrap">
+                                <span>Doctors</span>
+                                <span>Active</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 <div class="hero-phone-card">
                     <div class="hpc-top">
                         <div class="hpc-icon-ring">
