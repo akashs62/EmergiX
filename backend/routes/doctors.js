@@ -66,7 +66,7 @@ router.get('/', async (req, res) => {
 
         let query = db
             .from('users')
-            .select('id, name, specialization, experience, fee, languages, rating, status, schedule')
+            .select('id, name, specialization, experience, fee, languages, rating, status')
             .eq('role', 'doctor');
 
         if (specialization) {
@@ -109,7 +109,7 @@ router.get('/', async (req, res) => {
         res.status(200).json({ status: 'success', count: normalized.length, data: normalized });
     } catch (err) {
         console.error('Get doctors error:', err);
-        res.status(500).json({ error: 'Server error fetching doctors.' });
+        res.status(500).json({ error: err.message || 'Server error fetching doctors.' });
     }
 });
 
@@ -140,7 +140,7 @@ router.get('/:id', async (req, res) => {
         const db = getSupabaseAdmin();
         const { data, error } = await db
             .from('users')
-            .select('id, name, specialization, experience, fee, languages, rating, status, schedule')
+            .select('id, name, specialization, experience, fee, languages, rating, status')
             .eq('role', 'doctor')
             .eq('id', req.params.id)
             .maybeSingle();
@@ -197,7 +197,9 @@ router.put('/:id', async (req, res) => {
         if (experience !== undefined) updateData.experience = experience;
         if (fee !== undefined) updateData.fee = fee;
         if (status !== undefined) updateData.status = status;
-        if (schedule !== undefined) updateData.schedule = schedule;
+        
+        // Note: schedule column doesn't exist in DB yet, omitting to prevent 500 errors
+        // if (schedule !== undefined) updateData.schedule = schedule;
         
         if (Object.keys(updateData).length === 0) {
             return res.status(400).json({ error: 'No data provided to update.' });
