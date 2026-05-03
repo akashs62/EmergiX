@@ -3,6 +3,11 @@
 
 const API_Base = window.EmergiXConfig ? window.EmergiXConfig.API_BASE_URL : '';
 
+if (localStorage.getItem('doc_schedule_v2') !== '1') {
+    localStorage.removeItem('doc_schedule');
+    localStorage.setItem('doc_schedule_v2', '1');
+}
+
 // ── Data Store ──
 const DB = {
     patients: [],
@@ -10,13 +15,13 @@ const DB = {
     notifications: [
         { id: 'N0', text: 'Welcome to your live dashboard!', time: 'Just now', type: 'info', read: false }
     ],
-    schedule: {
-        'Monday': [{ time: '9:00 AM - 12:00 PM', label: 'OPD', active: true }, { time: '2:00 PM - 5:00 PM', label: 'Consultations', active: true }],
-        'Tuesday': [{ time: '9:00 AM - 1:00 PM', label: 'OPD', active: true }],
-        'Wednesday': [{ time: '10:00 AM - 1:00 PM', label: 'Video Consults', active: true }, { time: '2:00 PM - 5:00 PM', label: 'OPD', active: true }],
-        'Thursday': [{ time: '9:00 AM - 12:00 PM', label: 'OPD', active: true }, { time: '1:00 PM - 4:00 PM', label: 'Rounds', active: true }],
-        'Friday': [{ time: '10:00 AM - 1:00 PM', label: 'Consultations', active: true }],
-        'Saturday': [{ time: '9:00 AM - 12:00 PM', label: 'Emergency Only', active: true }],
+    schedule: JSON.parse(localStorage.getItem('doc_schedule')) || {
+        'Monday': [],
+        'Tuesday': [],
+        'Wednesday': [],
+        'Thursday': [],
+        'Friday': [],
+        'Saturday': [],
         'Sunday': []
     },
     records: []
@@ -352,6 +357,9 @@ async function initDashboard() {
     bindNotifications();
     bindTopActions();
     
+    // Fetch doctor profile to get schedule
+    await fetchDoctorProfile();
+    
     // Fetch real data
     await fetchLiveAppointments();
     
@@ -365,6 +373,21 @@ async function initDashboard() {
     });
     
     showView('dashboard');
+}
+
+async function fetchDoctorProfile() {
+    const userId = localStorage.getItem('userId');
+    if (!userId) return;
+    try {
+        const response = await fetch(`${API_Base}/api/doctors/${userId}`);
+        const result = await response.json();
+        if (result.status === 'success' && result.data.schedule) {
+            DB.schedule = result.data.schedule;
+            localStorage.setItem('doc_schedule', JSON.stringify(DB.schedule));
+        }
+    } catch (e) {
+        console.error('Failed to fetch doctor profile:', e);
+    }
 }
 
 // ── Fetch Logic ──
@@ -476,6 +499,7 @@ function showView(view) {
         case 'consultations': renderConsultations(); break;
         case 'schedule': renderSchedule(); break;
         case 'records': renderRecords(); break;
+        case 'feedback': renderFeedback(); break;
         case 'settings': renderSettings(); break;
     }
 }
@@ -1003,7 +1027,8 @@ function renderSchedule() {
         <h2 style="font-family:'Poppins',sans-serif;font-size:22px;font-weight:700;margin-bottom:20px;">My Availability</h2>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;">
             ${days.map(day => `
-                <div style="background:#fff;border-radius:16px;border:1px solid ${day === today ? '#4f46e5' : '#e2e8f0'};padding:20px;">
+                <div style="background:#fff;border-radius:16px;border:1px solid ${day === today ? '#4f46e5' : '#e2e8f0'};padding:20px;position:relative;">
+                    <button onclick="editDayAvailability('${day}')" style="position:absolute;top:16px;right:16px;background:none;border:none;color:#4f46e5;font-size:12px;font-weight:600;cursor:pointer;">Edit</button>
                     <div style="font-weight:700;font-size:15px;margin-bottom:14px;${day === today ? 'color:#4f46e5;' : ''}">${day}</div>
                     ${DB.schedule[day].length === 0 ? '<div style="color:#94a3b8;font-size:13px;">No slots</div>' : DB.schedule[day].map((slot, i) => `
                         <div style="padding:10px 12px;background:${slot.active ? '#faf9ff' : '#f8fafc'};border-radius:8px;margin-bottom:8px;border:1px solid ${slot.active ? '#ede9fe' : '#e2e8f0'};">
@@ -1013,8 +1038,104 @@ function renderSchedule() {
         </div>`;
 }
 
+function editDayAvailability(day) {
+    const slots = DB.schedule[day];
+    
+    // We will generate the form fields based on the current slots
+    let slotsHtml = slots.map((s, i) => `
+        <div class="slot-edit-row" style="display:flex;gap:10px;margin-bottom:10px;align-items:center;" data-index="${i}">
+            <input type="text" class="slot-time" value="${s.time}" placeholder="e.g. 9:00 AM - 12:00 PM" style="flex:2;padding:8px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;">
+            <input type="text" class="slot-label" value="${s.label}" placeholder="e.g. OPD" style="flex:1;padding:8px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;">
+            <label style="display:flex;align-items:center;font-size:12px;gap:4px;"><input type="checkbox" class="slot-active" ${s.active ? 'checked' : ''}> Active</label>
+            <button onclick="this.parentElement.remove()" style="background:none;border:none;color:#ef4444;font-size:16px;cursor:pointer;line-height:1;">✕</button>
+        </div>
+    `).join('');
+
+    openModal(`
+        <h3 style="margin-bottom:16px;">Edit Availability - ${day}</h3>
+        <div id="slots-container" style="max-height:300px;overflow-y:auto;margin-bottom:16px;">
+            ${slotsHtml.length > 0 ? slotsHtml : '<p id="no-slots-msg" style="color:#64748b;font-size:13px;">No slots defined. Add one.</p>'}
+        </div>
+        <div style="display:flex; gap:10px; margin-bottom:20px; width:100%;">
+            <button onclick="addSlotRow()" style="flex:1;padding:8px 16px;border:1px dashed #cbd5e1;border-radius:8px;background:none;color:#64748b;font-weight:600;cursor:pointer;font-size:13px;">+ Add Slot</button>
+            <button onclick="addAllDaySlot()" style="flex:1;padding:8px 16px;border:1px dashed #cbd5e1;border-radius:8px;background:none;color:#64748b;font-weight:600;cursor:pointer;font-size:13px;">+ Add All Day</button>
+        </div>
+        <button onclick="saveDayAvailability('${day}')" style="width:100%;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;font-weight:600;cursor:pointer;font-size:15px;">Save Changes</button>
+    `);
+}
+
+function addAllDaySlot() {
+    const container = document.getElementById('slots-container');
+    const msg = document.getElementById('no-slots-msg');
+    if(msg) msg.remove();
+
+    const div = document.createElement('div');
+    div.className = 'slot-edit-row';
+    div.style.cssText = 'display:flex;gap:10px;margin-bottom:10px;align-items:center;';
+    div.innerHTML = \`
+        <input type="text" class="slot-time" value="All Day" placeholder="e.g. 9:00 AM - 12:00 PM" style="flex:2;padding:8px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;">
+        <input type="text" class="slot-label" value="Consultations" placeholder="e.g. OPD" style="flex:1;padding:8px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;">
+        <label style="display:flex;align-items:center;font-size:12px;gap:4px;"><input type="checkbox" class="slot-active" checked> Active</label>
+        <button onclick="this.parentElement.remove()" style="background:none;border:none;color:#ef4444;font-size:16px;cursor:pointer;line-height:1;">✕</button>
+    \`;
+    container.appendChild(div);
+}
+
+function addSlotRow() {
+    const container = document.getElementById('slots-container');
+    const msg = document.getElementById('no-slots-msg');
+    if(msg) msg.remove();
+
+    const div = document.createElement('div');
+    div.className = 'slot-edit-row';
+    div.style.cssText = 'display:flex;gap:10px;margin-bottom:10px;align-items:center;';
+    div.innerHTML = `
+        <input type="text" class="slot-time" placeholder="e.g. 9:00 AM - 12:00 PM" style="flex:2;padding:8px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;">
+        <input type="text" class="slot-label" placeholder="e.g. OPD" style="flex:1;padding:8px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;">
+        <label style="display:flex;align-items:center;font-size:12px;gap:4px;"><input type="checkbox" class="slot-active" checked> Active</label>
+        <button onclick="this.parentElement.remove()" style="background:none;border:none;color:#ef4444;font-size:16px;cursor:pointer;line-height:1;">✕</button>
+    `;
+    container.appendChild(div);
+}
+
+async function saveDayAvailability(day) {
+    const rows = document.querySelectorAll('.slot-edit-row');
+    const newSlots = [];
+    rows.forEach(row => {
+        const time = row.querySelector('.slot-time').value.trim();
+        const label = row.querySelector('.slot-label').value.trim();
+        const active = row.querySelector('.slot-active').checked;
+        if(time) {
+            newSlots.push({ time, label: label || 'Available', active });
+        }
+    });
+
+    DB.schedule[day] = newSlots;
+    localStorage.setItem('doc_schedule', JSON.stringify(DB.schedule));
+    
+    const userId = localStorage.getItem('userId');
+    if (userId) {
+        try {
+            await fetch(`${API_Base}/api/doctors/${userId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ schedule: DB.schedule })
+            });
+        } catch(e) {
+            console.error('Failed to sync schedule to DB', e);
+        }
+    }
+
+    closeModal();
+    showToast(`Availability for ${day} updated & saved to database`, 'success');
+    if(currentView === 'schedule') renderSchedule();
+}
+
 // ── Records View ──
 function renderRecords(filter = '') {
+    const panel = document.getElementById('view-records');
+    
+    // UI Render logic omitted for brevity (unchanged)...
     const panel = document.getElementById('view-records');
     panel.innerHTML = `
         <h2 style="font-family:'Poppins',sans-serif;font-size:22px;font-weight:700;margin-bottom:20px;">Clinical Records</h2>
@@ -1135,6 +1256,101 @@ async function logout() {
     await setDoctorStatus('Inactive');
     localStorage.clear();
     window.location.href = 'signin.html';
+}
+
+// ── Feedback View ──
+let feedbackTimer = null;
+
+function renderFeedback() {
+    const panel = document.getElementById('view-feedback');
+    if (!panel) return;
+
+    const updateHTML = () => {
+        let feedbacks = JSON.parse(localStorage.getItem('doctor_feedbacks')) || [];
+        const now = Date.now();
+        
+        // Filter out expired feedback
+        const validFeedbacks = feedbacks.filter(f => f.expiresAt > now);
+        if (validFeedbacks.length !== feedbacks.length) {
+            feedbacks = validFeedbacks;
+            localStorage.setItem('doctor_feedbacks', JSON.stringify(feedbacks));
+        }
+        
+        if (feedbacks.length === 0) {
+            panel.innerHTML = `
+                <h2 style="font-family:'Poppins',sans-serif;font-size:22px;font-weight:700;margin-bottom:20px;">Patient Feedback</h2>
+                <div style="padding:40px;text-align:center;background:#fff;border-radius:16px;border:1px solid #e2e8f0;color:#64748b;">
+                    No recent feedback. Feedback will appear here after consultations.
+                </div>
+            `;
+            return;
+        }
+
+        const formatTimeLeft = (expiresAt) => {
+            const diff = expiresAt - Date.now();
+            if (diff <= 0) return 'Expired';
+            const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const h = Math.floor((diff / (1000 * 60 * 60)) % 24);
+            const m = Math.floor((diff / 1000 / 60) % 60);
+            const s = Math.floor((diff / 1000) % 60);
+            return `${d}d ${h}h ${m}m ${s}s`;
+        };
+
+        panel.innerHTML = `
+            <h2 style="font-family:'Poppins',sans-serif;font-size:22px;font-weight:700;margin-bottom:20px;">Patient Feedback</h2>
+            <div style="display:grid;gap:16px;">
+                ${feedbacks.sort((a,b) => b.createdAt - a.createdAt).map(f => `
+                    <div style="background:#fff;border-radius:16px;border:1px solid #e2e8f0;padding:20px;position:relative;display:flex;justify-content:space-between;align-items:flex-start;">
+                        <div style="flex:1;">
+                            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                                <strong style="font-size:16px;">${f.patientName}</strong>
+                                <span style="color:#f59e0b;font-size:14px;letter-spacing:1px;">${'★'.repeat(f.rating)}${'☆'.repeat(5 - f.rating)}</span>
+                            </div>
+                            <div style="font-size:13px;color:#64748b;margin-bottom:12px;">
+                                <strong>Quality:</strong> ${f.quality} &nbsp;•&nbsp; <strong>Addressed concerns:</strong> ${f.satisfied}
+                            </div>
+                            ${f.comments ? `<div style="font-size:14px;background:#f8fafc;padding:14px;border-radius:8px;color:#334155;border-left:4px solid #cbd5e1;font-style:italic;">"${f.comments}"</div>` : ''}
+                        </div>
+                        <div style="text-align:right;min-width:140px;margin-left:20px;">
+                            <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;font-weight:600;margin-bottom:6px;">Auto-deletes in</div>
+                            <div class="feedback-countdown" style="font-family:monospace;font-size:14px;font-weight:700;color:#ef4444;background:#fef2f2;padding:6px 12px;border-radius:8px;border:1px solid #fecaca;display:inline-block;" data-expires="${f.expiresAt}">
+                                ${formatTimeLeft(f.expiresAt)}
+                            </div>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    };
+
+    updateHTML();
+
+    if (feedbackTimer) clearInterval(feedbackTimer);
+    feedbackTimer = setInterval(() => {
+        if (currentView !== 'feedback') {
+            clearInterval(feedbackTimer);
+            return;
+        }
+        
+        const timers = document.querySelectorAll('.feedback-countdown');
+        let needsRefresh = false;
+        timers.forEach(t => {
+            const exp = parseInt(t.getAttribute('data-expires'));
+            const diff = exp - Date.now();
+            if (diff <= 0) {
+                needsRefresh = true;
+            } else {
+                const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+                const h = Math.floor((diff / (1000 * 60 * 60)) % 24);
+                const m = Math.floor((diff / 1000 / 60) % 60);
+                const s = Math.floor((diff / 1000) % 60);
+                t.textContent = `${d}d ${h}h ${m}m ${s}s`;
+            }
+        });
+        
+        if (needsRefresh) updateHTML();
+        
+    }, 1000);
 }
 
 document.addEventListener('DOMContentLoaded', initDashboard);

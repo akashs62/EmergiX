@@ -188,6 +188,10 @@ const VideoConsultationPage = () => {
     const [chatInput, setChatInput] = useState('');
     const [callConnected, setCallConnected] = useState(false);
 
+    // Dynamic stats
+    const [avgSatisfaction, setAvgSatisfaction] = useState('0.0');
+    const [avgDuration, setAvgDuration] = useState('0 min');
+
     const localVideoRef = useRef(null);
     const remoteVideoRef = useRef(null);
     const webrtcRef = useRef(null);
@@ -237,6 +241,34 @@ const VideoConsultationPage = () => {
     useEffect(() => {
         return () => { if (webrtcRef.current) webrtcRef.current.destroy(); };
     }, []);
+
+    // Compute stats from local storage
+    const computeStats = useCallback(() => {
+        const feedbacks = JSON.parse(localStorage.getItem('doctor_feedbacks')) || [];
+        if (feedbacks.length > 0) {
+            const sum = feedbacks.reduce((acc, f) => acc + f.rating, 0);
+            setAvgSatisfaction((sum / feedbacks.length).toFixed(1));
+        } else {
+            setAvgSatisfaction('0.0');
+        }
+
+        const durations = JSON.parse(localStorage.getItem('call_durations')) || [];
+        if (durations.length > 0) {
+            const sum = durations.reduce((acc, d) => acc + d, 0);
+            const avgSec = sum / durations.length;
+            const m = Math.floor(avgSec / 60);
+            const s = Math.floor(avgSec % 60);
+            setAvgDuration(s > 0 ? `${m}m ${s}s` : `${m} min`);
+        } else {
+            setAvgDuration('0 min');
+        }
+    }, []);
+
+    useEffect(() => {
+        computeStats();
+        window.addEventListener('storage', computeStats);
+        return () => window.removeEventListener('storage', computeStats);
+    }, [computeStats]);
 
     const availableCount = doctors.filter(d => d.status === 'Available').length;
 
@@ -413,6 +445,14 @@ const VideoConsultationPage = () => {
         setCallConnected(false);
         setModalUI('ended');
 
+        // Save duration
+        if (callTime > 0) {
+            const durs = JSON.parse(localStorage.getItem('call_durations')) || [];
+            durs.push(callTime);
+            localStorage.setItem('call_durations', JSON.stringify(durs));
+            computeStats();
+        }
+
         // Transition to feedback after the "Ended" banner
         setTimeout(() => {
             setModalUI('feedback');
@@ -420,7 +460,26 @@ const VideoConsultationPage = () => {
     };
 
     const handleFeedbackSubmit = () => {
-        console.log('[Consultation Feedback]', feedback);
+        const newFeedback = {
+            id: Date.now(),
+            doctorId: selectedDoc?.id || 'unknown',
+            patientName: patientInfo.name || 'Anonymous',
+            rating: feedback.rating,
+            quality: feedback.quality,
+            satisfied: feedback.satisfied,
+            comments: feedback.comments,
+            createdAt: Date.now(),
+            expiresAt: Date.now() + 10 * 24 * 60 * 60 * 1000 // 10 days
+        };
+
+        const existing = JSON.parse(localStorage.getItem('doctor_feedbacks')) || [];
+        existing.push(newFeedback);
+        localStorage.setItem('doctor_feedbacks', JSON.stringify(existing));
+
+        computeStats();
+
+        console.log('[Consultation Feedback Saved]', newFeedback);
+
         // Reset everything and return to home view
         setModalUI(null);
         setSelectedDoc(null);
@@ -552,21 +611,46 @@ const VideoConsultationPage = () => {
             )}
 
             {/* Header */}
-            <div className="vc-header">
-                <h1 className="vc-title">Video Consultation</h1>
-                <p className="vc-subtitle">Connect face-to-face with top specialists instantly in HD.</p>
-                <div className="vc-metrics">
-                    <div className="vc-metric">
-                        <strong>{availableCount}</strong>
-                        <span>Doctors available for immediate consult</span>
-                    </div>
-                    <div className="vc-metric">
-                        <strong>12 min</strong>
-                        <span>Median handoff from booking to consult</span>
-                    </div>
-                    <div className="vc-metric">
-                        <strong>4.8 / 5</strong>
-                        <span>Average patient satisfaction across specialties</span>
+            <div className="vc-header" style={{ display: 'flex', gap: '2rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <div className="vc-header-graphic" style={{ flex: '0 0 280px', display: 'flex', justifyContent: 'center' }}>
+                    <svg viewBox="0 0 200 200" width="100%" height="auto" style={{ maxWidth: '240px', filter: 'drop-shadow(0 10px 20px rgba(43, 127, 255, 0.15))' }}>
+                        <defs>
+                            <linearGradient id="hcGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stopColor="#E0F2FE" />
+                                <stop offset="100%" stopColor="#DBEAFE" />
+                            </linearGradient>
+                            <linearGradient id="hcIconGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stopColor="#2B7FFF" />
+                                <stop offset="100%" stopColor="#1E3A8A" />
+                            </linearGradient>
+                        </defs>
+                        <circle cx="100" cy="100" r="90" fill="url(#hcGrad)" />
+                        <circle cx="100" cy="100" r="70" fill="white" opacity="0.6" />
+                        <rect x="70" y="60" width="60" height="80" rx="12" fill="url(#hcIconGrad)" />
+                        <circle cx="100" cy="90" r="15" fill="white" />
+                        <path d="M85 125 Q100 140 115 125" stroke="white" strokeWidth="4" strokeLinecap="round" fill="none" />
+                        <circle cx="145" cy="65" r="20" fill="#FDE68A" />
+                        <path d="M145 55 L145 75 M135 65 L155 65" stroke="#D97706" strokeWidth="3" strokeLinecap="round" />
+                        <circle cx="55" cy="135" r="16" fill="#A7F3D0" />
+                        <path d="M48 135 L53 140 L62 130" stroke="#047857" strokeWidth="3" strokeLinecap="round" fill="none" />
+                    </svg>
+                </div>
+                <div style={{ flex: '1 1 500px' }}>
+                    <h1 className="vc-title">Video Consultation</h1>
+                    <p className="vc-subtitle">Connect face-to-face with top specialists instantly in HD.</p>
+                    <div className="vc-metrics">
+                        <div className="vc-metric">
+                            <strong>{availableCount}</strong>
+                            <span>Doctors available for immediate consult</span>
+                        </div>
+                        <div className="vc-metric">
+                            <strong>{avgDuration}</strong>
+                            <span>Average call duration</span>
+                        </div>
+                        <div className="vc-metric">
+                            <strong>{avgSatisfaction} / 5</strong>
+                            <span>Average patient satisfaction across specialties</span>
+                        </div>
                     </div>
                 </div>
             </div>

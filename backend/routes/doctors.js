@@ -66,7 +66,7 @@ router.get('/', async (req, res) => {
 
         let query = db
             .from('users')
-            .select('id, name, specialization, experience, fee, languages, rating, status')
+            .select('id, name, specialization, experience, fee, languages, rating, status, schedule')
             .eq('role', 'doctor');
 
         if (specialization) {
@@ -140,7 +140,7 @@ router.get('/:id', async (req, res) => {
         const db = getSupabaseAdmin();
         const { data, error } = await db
             .from('users')
-            .select('id, name, specialization, experience, fee, languages, rating, status')
+            .select('id, name, specialization, experience, fee, languages, rating, status, schedule')
             .eq('role', 'doctor')
             .eq('id', req.params.id)
             .maybeSingle();
@@ -171,7 +171,7 @@ router.get('/:id', async (req, res) => {
 // PUT /api/doctors/:id  — Update doctor profile
 // ─────────────────────────────────────────────────────────────────────────────
 router.put('/:id', async (req, res) => {
-    const { age, experience, fee, status } = req.body;
+    const { age, experience, fee, status, schedule } = req.body;
     
     if (!isConnected()) {
         const docIndex = memUsers.findIndex(u => u.role === 'doctor' && u.id === req.params.id);
@@ -181,6 +181,7 @@ router.put('/:id', async (req, res) => {
         if (experience !== undefined) memUsers[docIndex].experience = experience;
         if (fee !== undefined) memUsers[docIndex].fee = fee;
         if (status !== undefined) memUsers[docIndex].status = status;
+        if (schedule !== undefined) memUsers[docIndex].schedule = schedule;
         
         return res.status(200).json({ 
             status: 'success', 
@@ -196,6 +197,7 @@ router.put('/:id', async (req, res) => {
         if (experience !== undefined) updateData.experience = experience;
         if (fee !== undefined) updateData.fee = fee;
         if (status !== undefined) updateData.status = status;
+        if (schedule !== undefined) updateData.schedule = schedule;
         
         if (Object.keys(updateData).length === 0) {
             return res.status(400).json({ error: 'No data provided to update.' });
