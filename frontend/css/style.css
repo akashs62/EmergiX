@@ -210,7 +210,7 @@ body::after {
 .navbar.scrolled {
     background: rgba(255, 255, 255, 0.95);
     border-color: rgba(148, 163, 184, 0.22);
-    box-shadow: 0 4px 30px rgba(15, 23, 42, 0.07), 0 1px 3px rgba(15,23,42,0.04);
+    box-shadow: 0 4px 30px rgba(15, 23, 42, 0.07), 0 1px 3px rgba(15, 23, 42, 0.04);
 }
 
 .nav-inner {
@@ -346,9 +346,9 @@ body::after {
     position: relative;
     padding: 100px 24px 0;
     background:
-        radial-gradient(ellipse at 15% 60%, rgba(34,201,105,0.22), transparent 45%),
-        radial-gradient(ellipse at 85% 30%, rgba(43,127,255,0.25), transparent 45%),
-        radial-gradient(circle at top center, rgba(255,255,255,0.12), transparent 40%),
+        radial-gradient(ellipse at 15% 60%, rgba(34, 201, 105, 0.22), transparent 45%),
+        radial-gradient(ellipse at 85% 30%, rgba(43, 127, 255, 0.25), transparent 45%),
+        radial-gradient(circle at top center, rgba(255, 255, 255, 0.12), transparent 40%),
         linear-gradient(150deg, #0d5c38 0%, #1a7a50 25%, #1c4fa3 65%, #0f3080 100%);
     overflow: hidden;
     min-height: 740px;
@@ -462,7 +462,7 @@ body::after {
     opacity: 0.85;
     flex-shrink: 0;
     margin-top: 3px;
-    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15));
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
 }
 
 /* CTAs */
@@ -542,8 +542,8 @@ body::after {
 
 .hero-actions-container {
     position: absolute;
-    top: -120px;
-    left: -300px;
+    top: -100px;
+    left: -120px;
     right: 0;
     display: flex;
     flex-direction: column;
@@ -595,7 +595,7 @@ body::after {
     background: linear-gradient(to bottom, #ffffff, #e2e8f0);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
 }
 
 .status-text-wrap {
@@ -620,9 +620,17 @@ body::after {
 }
 
 @keyframes pulse-green {
-    0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6); }
-    70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    0% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6);
+    }
+
+    70% {
+        box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+    }
 }
 
 .hero-top-features {
@@ -719,11 +727,13 @@ body::after {
     align-items: center;
     justify-content: center;
     min-height: 380px;
-    margin-top: -120px;
+    margin-top: -20px;
 }
 
 .hero-center-art {
     position: relative;
+    top: 60px;
+    left: 40px;
     z-index: 1;
     animation: floatArt 5s ease-in-out infinite;
 }
@@ -743,7 +753,7 @@ body::after {
 /* Floating cards */
 .hero-phone-card {
     position: absolute;
-    top: 0;
+    top: 60px;
     left: -20px;
     background: #fff;
     border-radius: 18px;
@@ -862,19 +872,19 @@ body::after {
 }
 
 .card-lives {
-    bottom: 30px;
+    bottom: -30px;
     left: -10px;
     animation-delay: -1s;
 }
 
 .card-response {
-    top: 80px;
+    top: 140px;
     right: -20px;
     animation-delay: -2s;
 }
 
 .card-hosp {
-    bottom: 10px;
+    bottom: -50px;
     right: 10px;
     animation-delay: -3s;
 }
@@ -954,7 +964,7 @@ body::after {
     content: '';
     position: absolute;
     inset: 0;
-    background: radial-gradient(ellipse at 50% 0%, rgba(39,174,96,0.05), transparent 60%);
+    background: radial-gradient(ellipse at 50% 0%, rgba(39, 174, 96, 0.05), transparent 60%);
     pointer-events: none;
 }
 
@@ -970,8 +980,8 @@ body::after {
     border-radius: var(--radius);
     padding: 30px 24px;
     text-align: center;
-    box-shadow: 0 4px 20px rgba(15,23,42,0.07), 0 1px 4px rgba(15,23,42,0.04);
-    border: 1px solid rgba(226,232,240,0.8);
+    box-shadow: 0 4px 20px rgba(15, 23, 42, 0.07), 0 1px 4px rgba(15, 23, 42, 0.04);
+    border: 1px solid rgba(226, 232, 240, 0.8);
     transition: all var(--transition-spring);
     position: relative;
     overflow: hidden;
@@ -980,7 +990,9 @@ body::after {
 .stat-card::after {
     content: '';
     position: absolute;
-    top: 0; left: 0; right: 0;
+    top: 0;
+    left: 0;
+    right: 0;
     height: 3px;
     background: var(--grad-brand);
     transform: scaleX(0);
@@ -988,12 +1000,14 @@ body::after {
     transition: transform 0.4s var(--transition-spring);
 }
 
-.stat-card:hover::after { transform: scaleX(1); }
+.stat-card:hover::after {
+    transform: scaleX(1);
+}
 
 .stat-card:hover {
     transform: translateY(-6px);
-    box-shadow: 0 20px 50px rgba(43,127,255,0.14), 0 4px 16px rgba(43,127,255,0.06);
-    border-color: rgba(43,127,255,0.15);
+    box-shadow: 0 20px 50px rgba(43, 127, 255, 0.14), 0 4px 16px rgba(43, 127, 255, 0.06);
+    border-color: rgba(43, 127, 255, 0.15);
 }
 
 .stat-icon-wrap {
@@ -1065,7 +1079,7 @@ body::after {
 .services {
     padding: 88px 0 108px;
     background: linear-gradient(180deg, #FFFFFF 0%, #F5F7FA 100%);
-    border-top: 1px solid rgba(226,232,240,0.6);
+    border-top: 1px solid rgba(226, 232, 240, 0.6);
 }
 
 .services-grid {
@@ -1106,7 +1120,7 @@ body::after {
     pointer-events: none;
 }
 
-.service-card > * {
+.service-card>* {
     position: relative;
     z-index: 1;
 }
@@ -1412,8 +1426,8 @@ body::after {
     position: absolute;
     inset: 0;
     background:
-        radial-gradient(ellipse at 20% 50%, rgba(34,201,105,0.2), transparent 50%),
-        radial-gradient(ellipse at 80% 50%, rgba(43,127,255,0.2), transparent 50%);
+        radial-gradient(ellipse at 20% 50%, rgba(34, 201, 105, 0.2), transparent 50%),
+        radial-gradient(ellipse at 80% 50%, rgba(43, 127, 255, 0.2), transparent 50%);
     pointer-events: none;
 }
 
@@ -1671,9 +1685,11 @@ body::after {
 .footer::before {
     content: '';
     position: absolute;
-    top: 0; left: 0; right: 0;
+    top: 0;
+    left: 0;
+    right: 0;
     height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(30,184,96,0.4), rgba(43,127,255,0.4), transparent);
+    background: linear-gradient(90deg, transparent, rgba(30, 184, 96, 0.4), rgba(43, 127, 255, 0.4), transparent);
 }
 
 .footer-top {
@@ -2273,22 +2289,32 @@ body::after {
 }
 
 @keyframes pulseRing {
-    0% { transform: scale(0.5); opacity: 0; }
-    50% { opacity: 0.5; }
-    100% { transform: scale(1.5); opacity: 0; }
+    0% {
+        transform: scale(0.5);
+        opacity: 0;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+
+    100% {
+        transform: scale(1.5);
+        opacity: 0;
+    }
 }
 
 .leaflet-popup-content-wrapper {
     border-radius: 12px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
     font-family: 'Poppins', sans-serif;
     padding: 2px;
 }
 
 .leaflet-popup-tip {
-    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
 }
 
 .leaflet-container {
     background: #f8fafc;
-}
+}
