@@ -543,7 +543,7 @@ body::after {
 .hero-actions-container {
     position: absolute;
     top: -100px;
-    left: -120px;
+    left: -100px;
     right: 0;
     display: flex;
     flex-direction: column;
