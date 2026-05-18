@@ -46,7 +46,7 @@ For production deployments where the frontend/API stay on Vercel, host `backend/
 on a Node service that supports persistent WebSocket connections and set
 `window.__EMERGIX_WS_BASE_URL__ = 'wss://your-realtime-host'` before `frontend/js/config.js` loads.
 
-## File Structure ??
+## File Structure 
 
 ```text
 EmergiX/
