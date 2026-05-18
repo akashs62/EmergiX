@@ -33,10 +33,18 @@ Run all the commands in Command Prompt Terminal(cmd)
    ```bash
    npm start
    ```
-4. Open `http://localhost:3000` in your browser.
-5. (Optional) Check backend health at `http://localhost:3000/api/health`.
+4. **For split production deployments, start the realtime server separately**:
+   ```bash
+   npm run realtime
+   ```
+5. Open `http://localhost:3000` in your browser.
+6. (Optional) Check backend health at `http://localhost:3000/api/health`.
 
 Note: the Express backend serves the frontend, so a separate `npx serve` process is not required.
+
+For production deployments where the frontend/API stay on Vercel, host `backend/realtime-server.js`
+on a Node service that supports persistent WebSocket connections and set
+`window.__EMERGIX_WS_BASE_URL__ = 'wss://your-realtime-host'` before `frontend/js/config.js` loads.
 
 ## File Structure 📁
 - `frontend/` - Static pages, styles, plain JS, and Babel JSX components.

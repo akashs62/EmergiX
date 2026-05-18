@@ -9,9 +9,12 @@ const EmergiXConfig = (() => {
     
     // Set API_BASE_URL dynamically based on environment
     const API_BASE_URL = isLocalhost ? 'http://localhost:3000' : window.location.origin;
+    const WS_BASE_URL = window.__EMERGIX_WS_BASE_URL__
+        || (isLocalhost ? 'ws://localhost:3000' : window.location.origin.replace(/^http/, 'ws'));
 
     return {
         API_BASE_URL,
+        WS_BASE_URL,
         isDevelopment: isLocalhost
     };
 })();

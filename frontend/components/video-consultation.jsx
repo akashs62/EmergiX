@@ -4,6 +4,7 @@
  */
 const { useState, useEffect, useRef, useMemo, useCallback } = React;
 const API_Base = window.EmergiXConfig ? window.EmergiXConfig.API_BASE_URL : 'http://127.0.0.1:3000';
+const WS_Base = window.EmergiXConfig ? window.EmergiXConfig.WS_BASE_URL : API_Base.replace(/^https/, 'wss').replace(/^http/, 'ws');
 
 // ─── ICE Config ───────────────────────────────────────────────────────────────
 const ICE_CONFIG = {
@@ -34,15 +35,16 @@ class PatientWebRTC {
         this.onStatusChange('Waiting for doctor to join...');
 
         // Set up WebSocket accurately
-        let wsBase = API_Base.replace(/^https/, 'wss').replace(/^http/, 'ws');
-        const wsUrl = `${wsBase}/ws?roomId=${this.roomId}&role=patient`;
+        const wsUrl = `${WS_Base}/ws?roomId=${this.roomId}&role=patient`;
         console.log('[Patient] Connecting to WS:', wsUrl);
         this.ws = new WebSocket(wsUrl);
 
         this.ws.onopen = () => console.log('[Patient] WS connected');
         this.ws.onmessage = (e) => this._handleSignal(JSON.parse(e.data));
-        this.ws.onerror = (e) => console.error('[Patient] WS error', e);
-        this.ws.onclose = () => console.log('[Patient] WS closed');
+        this.ws.onerror = () => this.onStatusChange('Signaling connection failed');
+        this.ws.onclose = () => {
+            if (this.pc?.connectionState !== 'connected') this.onStatusChange('Signaling disconnected');
+        };
 
         return this.localStream;
     }
@@ -114,6 +116,12 @@ class PatientWebRTC {
                 break;
             case 'end-call':
                 this.onPeerLeft();
+                break;
+            case 'error':
+                this.onStatusChange(msg.message || 'Signaling error');
+                break;
+            case 'replaced':
+                this.onStatusChange('This patient session was replaced by a newer connection');
                 break;
             default:
                 break;
