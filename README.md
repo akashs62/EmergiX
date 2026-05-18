@@ -33,16 +33,53 @@ Run all the commands in Command Prompt Terminal(cmd)
    ```bash
    npm start
    ```
-4. Open `http://localhost:3000` in your browser.
-5. (Optional) Check backend health at `http://localhost:3000/api/health`.
+4. **For split production deployments, start the realtime server separately**:
+   ```bash
+   npm run realtime
+   ```
+5. Open `http://localhost:3000` in your browser.
+6. (Optional) Check backend health at `http://localhost:3000/api/health`.
 
 Note: the Express backend serves the frontend, so a separate `npx serve` process is not required.
 
-## File Structure 📁
-- `frontend/` - Static pages, styles, plain JS, and Babel JSX components.
-- `backend/server.js` - Express API + static file hosting + WebSocket signaling.
-- `backend/routes/` - Feature routes (`auth`, `doctors`, `rooms`, `triage`, etc.).
-- `backend/config/` - DB and environment config helpers.
+For production deployments where the frontend/API stay on Vercel, host `backend/realtime-server.js`
+on a Node service that supports persistent WebSocket connections and set
+`window.__EMERGIX_WS_BASE_URL__ = 'wss://your-realtime-host'` before `frontend/js/config.js` loads.
+
+## File Structure ??
+
+```text
+EmergiX/
+|-- api/
+|   `-- index.js                 # Vercel serverless entrypoint
+|-- backend/
+|   |-- config/                  # Database and environment helpers
+|   |-- middleware/              # Auth and route protection
+|   |-- models/                  # Data models
+|   |-- routes/                  # REST API routes
+|   |-- realtime-server.js       # Standalone WebSocket-capable server entrypoint
+|   |-- server.js                # Main Express app and local server entrypoint
+|   `-- signaling.js             # WebRTC signaling logic
+|-- frontend/
+|   |-- assets/                  # Images and static assets
+|   |-- components/              # Babel JSX UI components
+|   |-- css/                     # Stylesheets
+|   |-- js/                      # Shared browser-side JavaScript
+|   `-- *.html                   # Frontend pages
+|-- test/                        # Automated backend/signaling tests
+|-- .env.example                 # Environment variable template
+|-- package.json                 # Scripts and dependencies
+|-- package-lock.json            # Locked dependency versions
+|-- supabase-schema.sql          # Database schema
+|-- vercel.json                  # Vercel routing config
+`-- README.md
+```
+
+### Directory Notes
+- `frontend/` contains the browser UI: pages, styles, shared scripts, and JSX components.
+- `backend/` contains the application server code, REST routes, and realtime signaling modules.
+- `api/` exists for Vercel compatibility and forwards requests into the backend app.
+- `test/` contains regression tests for room visibility and signaling behavior.
 
 ## License 📄
 MIT License

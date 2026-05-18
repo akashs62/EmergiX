@@ -2,6 +2,7 @@
 // =============================================
 
 const API_Base = window.EmergiXConfig ? window.EmergiXConfig.API_BASE_URL : '';
+const WS_Base = window.EmergiXConfig ? window.EmergiXConfig.WS_BASE_URL : API_Base.replace(/^https/, 'wss').replace(/^http/, 'ws');
 
 if (localStorage.getItem('doc_schedule_v2') !== '1') {
     localStorage.removeItem('doc_schedule');
@@ -210,8 +211,7 @@ class DoctorWebRTC {
         this.onLocalStream(this.localStream);
         this.onStatusChange('Connecting to room...');
 
-        const wsBase = API_Base.replace(/^https/, 'wss').replace(/^http/, 'ws');
-        const wsUrl = `${wsBase}/ws?roomId=${this.roomId}&role=doctor`;
+        const wsUrl = `${WS_Base}/ws?roomId=${this.roomId}&role=doctor`;
         console.log('[Doctor] Connecting to WS:', wsUrl);
         this.ws = new WebSocket(wsUrl);
         this.ws.onopen = () => {
@@ -219,8 +219,10 @@ class DoctorWebRTC {
             this.onStatusChange('Joined room — waiting for patient...');
         };
         this.ws.onmessage = (e) => this._handleSignal(JSON.parse(e.data));
-        this.ws.onerror = (e) => console.error('[Doctor] WS error', e);
-        this.ws.onclose = () => console.log('[Doctor] WS closed');
+        this.ws.onerror = () => this.onStatusChange('Signaling connection failed');
+        this.ws.onclose = () => {
+            if (this.pc?.connectionState !== 'connected') this.onStatusChange('Signaling disconnected');
+        };
     }
 
     _createPeerConnection() {
@@ -293,6 +295,12 @@ class DoctorWebRTC {
             case 'peer-left':
             case 'end-call':
                 this.onPeerLeft();
+                break;
+            case 'error':
+                this.onStatusChange(msg.message || 'Signaling error');
+                break;
+            case 'replaced':
+                this.onStatusChange('This doctor session was replaced by a newer connection');
                 break;
             default: break;
         }

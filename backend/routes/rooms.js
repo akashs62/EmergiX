@@ -38,10 +38,10 @@ router.post('/create', (req, res) => {
 // GET /api/rooms/active — poll for active incoming calls
 router.get('/active', protect, authorize('doctor'), (req, res) => {
     const doctorId = String(req.user.id);
-    let activeRooms = [];
-    
-    // Find all active rooms (bypassing ID check to ensure calls always appear)
+    const activeRooms = [];
+
     for (const [rid, roomObj] of rooms.entries()) {
+        if (roomObj.doctorId !== doctorId) continue;
         activeRooms.push({ roomId: rid, patientName: roomObj.patientName, createdAt: roomObj.createdAt });
     }
     
